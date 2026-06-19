@@ -1,22 +1,15 @@
-# Base da Família v1.0 organizada
+# Base da Família v2 - Rotina
 
-Arquivos separados:
-- index.html
-- style.css
-- app.js
-- manifest.json
-- sw.js
-- icon-192.png
-- icon-512.png
+Implementado:
+- Missões como rotina programada, não checklist infinito.
+- Missão diária, semanal e mensal recorrente.
+- Tempo personalizado em minutos.
+- Semanal com vários dias, exemplo: lixo 3x por semana.
+- Categoria Saúde além de Casa e Pets.
+- XP da Base sobe com Casa, Pets e Saúde.
+- Cofrinho simplificado: metas, guardado e faltante.
+- Histórico com snapshot por dia: missão nova não altera acerto antigo.
+- Missões feitas ficam no Histórico.
+- Pacotes rápidos para configurar sem criar tudo manualmente.
 
-## IMPORTANTE
-Abra `app.js` e cole sua chave pública do Supabase nesta linha:
-
-```js
-SUPABASE_ANON_KEY: ""
-```
-
-A URL já está preenchida:
-https://ukpbnqzsthxywgabpumj.supabase.co
-
-Depois suba a pasta extraída no Netlify.
+IMPORTANTE: abra app.js e cole sua chave pública do Supabase em SUPABASE_ANON_KEY.

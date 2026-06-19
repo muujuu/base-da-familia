@@ -13,172 +13,35 @@
   <div class="app">
     <header class="header">
       <div class="brand">
-        <div class="logo"><img src="icon-192.png" alt="Base da Família"></div>
-        <div>
-          <h1>Base da Família</h1>
-          <p class="subtitle">Missões, recompensas e conquistas.</p>
-          <div class="sync"><span class="dot local" id="syncDot"></span><span id="syncText">modo local</span></div>
-        </div>
+        <div class="logo"><img src="icon-192.png" alt="Base"></div>
+        <div><h1>Base da Família</h1><p class="subtitle">Rotina, saúde, cofrinho e conquistas.</p><div class="sync"><span class="dot local" id="syncDot"></span><span id="syncText">modo local</span></div></div>
       </div>
       <div class="top-mini">
         <div class="mini"><small>🔥 Sequência</small><strong id="streakTop">0 dias</strong></div>
         <div class="mini"><small>🍺 Base</small><strong id="baseBeerTop">Bavaria</strong></div>
-        <div class="mini"><small>💰 Metas</small><strong id="goalWealthTop">R$ 0,00</strong></div>
+        <div class="mini"><small>🐷 Cofrinho</small><strong id="goalWealthTop">R$ 0,00</strong></div>
         <div class="mini"><small>🏆 Hall</small><strong id="achTop">0</strong></div>
       </div>
     </header>
-
     <main>
-      <section id="screen-hoje" class="screen active">
-        <div class="card">
-          <div class="section-head">
-            <div>
-              <h2>✅ Missões de Hoje</h2>
-              <p class="subtitle">O que precisa ser feito agora.</p>
-            </div>
-            <span class="pill" id="todaySummary">0 pendentes</span>
-          </div>
-          <div class="next-mission" id="nextMission"></div>
-          <div class="mission-list">
-            <div class="task-box">
-              <div class="section-head"><h2>🏠 Casa <span class="pill" id="count-casa">0/0</span></h2></div>
-              <div id="tasksCasa"></div>
-            </div>
-            <div class="task-box">
-              <div class="section-head"><h2>🐾 Pets <span class="pill" id="count-pets">0/0</span></h2></div>
-              <div id="tasksPets"></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="section-head"><h2>➕ Criar missão</h2><span class="pill" id="xpPreview">⭐ 10 XP</span></div>
-          <div class="add-grid">
-            <input id="taskText" placeholder="Ex: limpar caixa de areia">
-            <select id="taskCategory"><option value="casa">🏠 Casa</option><option value="pets">🐾 Pets</option></select>
-            <select id="taskPerson"><option value="Mu">👨 Mu</option><option value="Ju">👩 Ju</option><option value="Ambos">👫 Ambos</option></select>
-            <select id="taskDifficulty"><option value="facil">🟢 Fácil</option><option value="media">🔵 Média</option><option value="dificil">🟣 Difícil</option><option value="muito_dificil">🔴 Muito difícil</option></select>
-            <select id="taskTime"><option value="1">⏱️ 1 min</option><option value="5">⏱️ 5 min</option><option value="15">⏱️ 15 min</option><option value="30">⏱️ 30 min</option><option value="60">⏱️ 1 hora</option></select>
-            <select id="taskFrequency"><option value="diaria">Diária</option><option value="semanal">Semanal</option><option value="mensal">Mensal</option><option value="rara">Rara</option></select>
-            <button id="addTaskBtn">Criar</button>
-          </div>
-        </div>
+      <section id="screen-missoes" class="screen active">
+        <div class="card hero-card"><div class="section-head"><div><h2>⚡ Próxima missão</h2><p class="subtitle">Entrar, marcar, sair.</p></div><span class="pill" id="missionTodaySummary">0 hoje</span></div><div id="nextMissionCard"></div></div>
+        <div class="quick-grid"><div class="stat-card"><strong id="dueTodayCount">0</strong><span>previstas hoje</span></div><div class="stat-card"><strong id="doneTodayCount">0</strong><span>feitas hoje</span></div><div class="stat-card"><strong id="lateCount">0</strong><span>atrasadas</span></div><div class="stat-card"><strong id="perfectDayFlag">—</strong><span>dia perfeito</span></div></div>
+        <div class="card"><div class="section-head"><h2>📌 Hoje</h2><div class="filters"><button class="chip active" data-mission-filter="todas">Todas</button><button class="chip" data-mission-filter="casa">🏠 Casa</button><button class="chip" data-mission-filter="pets">🐾 Pets</button><button class="chip" data-mission-filter="saude">🧠 Saúde</button></div></div><div id="todayMissions" class="mission-cards"></div></div>
+        <div class="card"><div class="section-head"><h2>⚠️ Atrasadas</h2><span class="pill">sem culpa, só resolver</span></div><div id="lateMissions" class="mission-cards"></div></div>
+        <div class="card"><div class="section-head"><h2>📅 Próximos 7 dias</h2><span class="pill">rotina programada</span></div><div id="upcomingMissions" class="timeline"></div></div>
+        <div class="card"><div class="section-head"><div><h2>➕ Criar rotina</h2><p class="subtitle">Crie uma vez. Ela reaparece sozinha.</p></div><span class="pill" id="createXpPreview">⭐ 10 XP</span></div><div class="accordion"><button class="accordion-head" data-accordion="dailyForm">☀️ Missão diária</button><div id="dailyForm" class="accordion-body"></div><button class="accordion-head" data-accordion="weeklyForm">📆 Missão semanal</button><div id="weeklyForm" class="accordion-body"></div><button class="accordion-head" data-accordion="monthlyForm">🗓️ Missão mensal</button><div id="monthlyForm" class="accordion-body"></div></div></div>
+        <div class="card"><div class="section-head"><div><h2>📦 Pacotes rápidos</h2><p class="subtitle">Para não cadastrar tudo na mão.</p></div><span class="pill">1 clique</span></div><div class="preset-grid" id="presetGrid"></div></div>
       </section>
-
-      <section id="screen-dashboard" class="screen">
-        <div class="three-col">
-          <div class="dash-card"><h3>👨 Mu</h3><div class="dash-main" id="dashMuBeer">🍺 Bavaria</div><p class="subtitle" id="dashMuSummary"></p><div id="dashMuNext"></div></div>
-          <div class="dash-card"><h3>👩 Ju</h3><div class="dash-main" id="dashJuBeer">🍺 Bavaria</div><p class="subtitle" id="dashJuSummary"></p><div id="dashJuNext"></div></div>
-          <div class="dash-card"><h3>🏡 Base</h3><div class="dash-main" id="dashBaseBeer">🍺 Bavaria</div><p class="subtitle" id="dashBaseSummary"></p><div id="dashBaseNext"></div></div>
-        </div>
-
-        <div class="card">
-          <div class="section-head"><h2>🎁 Recompensas disponíveis</h2><span class="pill" id="availableRewardCount">0 liberadas</span></div>
-          <div id="availableRewards"></div>
-        </div>
-
-        <div class="card">
-          <div class="section-head"><h2>🔒 Próximas recompensas</h2><span class="pill">difíceis de propósito</span></div>
-          <div id="lockedRewards"></div>
-        </div>
-
-        <div class="card">
-          <div class="section-head"><h2>🍺 Adega</h2><span class="pill">níveis</span></div>
-          <div class="three-col" id="beerCards"></div>
-        </div>
-
-        <div class="card">
-          <div class="section-head"><h2>👨‍👩‍👧 Equipe</h2><span class="pill">responsabilidades</span></div>
-          <div class="three-col" id="memberStats"></div>
-        </div>
-      </section>
-
-      <section id="screen-metas" class="screen">
-        <div class="card">
-          <div class="section-head"><h2>🎯 Sala de Objetivos</h2><button class="small" id="openGoalBtn">+ Nova meta</button></div>
-          <div class="goal-grid" id="goalList"></div>
-        </div>
-
-        <div class="card">
-          <div class="section-head"><h2>💰 Tesouraria</h2><span class="pill">saldo do mês</span></div>
-          <div class="finance-grid">
-            <div class="finance-card"><small>Entradas</small><strong class="green" id="incomeMonth"></strong></div>
-            <div class="finance-card"><small>Saídas</small><strong class="red" id="spentMonth"></strong></div>
-            <div class="finance-card"><small>Saldo</small><strong class="yellow" id="balanceMonth"></strong></div>
-            <div class="finance-card"><small>Metas</small><strong class="yellow" id="goalsMonth"></strong></div>
-          </div>
-          <div class="finance-form">
-            <select id="financeType"><option value="in">Entrada</option><option value="out">Saída</option></select>
-            <input id="financeValue" type="number" step="0.01" min="0" placeholder="Valor R$">
-            <input id="financeDate" type="date">
-            <select id="financeCategory"><option>Mercado</option><option>Pet</option><option>Casa</option><option>Lazer</option><option>Saúde</option><option>Outros</option></select>
-            <button id="addFinanceBtn">Salvar</button>
-          </div>
-          <div id="financeHistory" class="list-space"></div>
-        </div>
-      </section>
-
-      <section id="screen-hall" class="screen">
-        <div class="card">
-          <div class="section-head">
-            <div>
-              <h2>🏆 Hall de Conquistas</h2>
-              <p class="subtitle">Mais de 100 conquistas pequenas, divididas por tema.</p>
-            </div>
-            <span class="pill"><span id="achievementBadge">0</span> desbloqueadas</span>
-          </div>
-          <div class="trophy-tabs" id="trophyTabs"></div>
-          <div class="trophy-grid" id="achievementList"></div>
-        </div>
-      </section>
-
-      <section id="screen-historico" class="screen">
-        <div class="card">
-          <div class="section-head"><h2>📜 Histórico no calendário</h2><span class="pill">consulta</span></div>
-          <div class="month-controls">
-            <button class="small" id="prevMonthBtn">◀ Mês</button>
-            <strong id="monthTitle"></strong>
-            <button class="small" id="nextMonthBtn">Mês ▶</button>
-          </div>
-          <div class="days">
-            <div class="day-name">Seg</div><div class="day-name">Ter</div><div class="day-name">Qua</div><div class="day-name">Qui</div><div class="day-name">Sex</div><div class="day-name">Sáb</div><div class="day-name">Dom</div>
-          </div>
-          <div class="days" id="calendarDays"></div>
-        </div>
-
-        <div class="card">
-          <div class="section-head"><h2>📜 Recompensas resgatadas</h2><span class="pill">histórico</span></div>
-          <div id="rewardHistory"></div>
-        </div>
-
-        <div class="card">
-          <div class="section-head"><h2>📊 Save anual</h2><span class="pill">resumo</span></div>
-          <div class="three-col" id="annualStats"></div>
-        </div>
-      </section>
+      <section id="screen-base" class="screen"><div class="three-col"><div class="dash-card"><h3>👨 Mu</h3><div class="dash-main" id="dashMuBeer">🍺 Bavaria</div><p class="subtitle" id="dashMuSummary"></p><div id="dashMuNext"></div></div><div class="dash-card"><h3>👩 Ju</h3><div class="dash-main" id="dashJuBeer">🍺 Bavaria</div><p class="subtitle" id="dashJuSummary"></p><div id="dashJuNext"></div></div><div class="dash-card"><h3>🏡 Base</h3><div class="dash-main" id="dashBaseBeer">🍺 Bavaria</div><p class="subtitle" id="dashBaseSummary"></p><div id="dashBaseNext"></div></div></div><div class="card"><div class="section-head"><h2>🎁 Recompensas disponíveis</h2><span class="pill" id="availableRewardCount">0 liberadas</span></div><div id="availableRewards" class="reward-list"></div></div><div class="card"><div class="section-head"><h2>🔒 Próximas recompensas</h2><span class="pill">difíceis de propósito</span></div><div id="lockedRewards" class="reward-list"></div></div><div class="card"><div class="section-head"><h2>🍺 Adega</h2><span class="pill">níveis</span></div><div class="three-col" id="beerCards"></div></div><div class="card"><div class="section-head"><h2>🤝 Responsabilidades</h2><span class="pill">equilíbrio saudável</span></div><div class="three-col" id="memberStats"></div></div></section>
+      <section id="screen-cofrinho" class="screen"><div class="card"><div class="section-head"><div><h2>🐷 Cofrinho</h2><p class="subtitle">Só metas, quanto tem e quanto falta.</p></div><button class="small" id="openGoalBtn">+ Nova meta</button></div><div class="quick-grid"><div class="stat-card"><strong id="cofrinhoTotal">R$ 0,00</strong><span>guardado</span></div><div class="stat-card"><strong id="cofrinhoTarget">R$ 0,00</strong><span>objetivo total</span></div><div class="stat-card"><strong id="cofrinhoMissing">R$ 0,00</strong><span>faltando</span></div><div class="stat-card"><strong id="cofrinhoCount">0</strong><span>metas ativas</span></div></div><div id="goalList" class="goal-grid"></div></div></section>
+      <section id="screen-hall" class="screen"><div class="card"><div class="section-head"><div><h2>🏆 Hall de Conquistas</h2><p class="subtitle">Conquistas pequenas, divididas por tema.</p></div><span class="pill"><span id="achievementBadge">0</span> desbloqueadas</span></div><div class="trophy-tabs" id="trophyTabs"></div><div class="trophy-grid" id="achievementList"></div></div></section>
+      <section id="screen-historico" class="screen"><div class="card"><div class="section-head"><h2>📜 Histórico no calendário</h2><span class="pill">não muda com missão nova</span></div><div class="month-controls"><button class="small" id="prevMonthBtn">◀ Mês</button><strong id="monthTitle"></strong><button class="small" id="nextMonthBtn">Mês ▶</button></div><div class="days"><div class="day-name">Seg</div><div class="day-name">Ter</div><div class="day-name">Qua</div><div class="day-name">Qui</div><div class="day-name">Sex</div><div class="day-name">Sáb</div><div class="day-name">Dom</div></div><div class="days" id="calendarDays"></div></div><div class="card"><div class="section-head"><h2>✅ Missões feitas</h2><div class="filters"><button class="chip active" data-history-filter="todas">Todas</button><button class="chip" data-history-filter="Mu">Mu</button><button class="chip" data-history-filter="Ju">Ju</button><button class="chip" data-history-filter="casa">Casa</button><button class="chip" data-history-filter="pets">Pets</button><button class="chip" data-history-filter="saude">Saúde</button></div></div><div id="completedList"></div></div><div class="card"><div class="section-head"><h2>📜 Recompensas resgatadas</h2><span class="pill">histórico</span></div><div id="rewardHistory"></div></div><div class="card"><div class="section-head"><h2>📊 Save anual</h2><span class="pill">resumo</span></div><div class="three-col" id="annualStats"></div></div></section>
     </main>
   </div>
-
-  <nav class="bottom-nav">
-    <button class="nav-btn active" data-screen="hoje">✅<br>Hoje</button>
-    <button class="nav-btn" data-screen="dashboard">📊<br>Base</button>
-    <button class="nav-btn" data-screen="metas">🎯<br>Metas</button>
-    <button class="nav-btn" data-screen="hall">🏆<br>Hall</button>
-    <button class="nav-btn" data-screen="historico">📜<br>Histórico</button>
-  </nav>
-
-  <div class="modal-bg" id="goalModal">
-    <div class="modal">
-      <div class="modal-head"><h2>🎯 Criar nova meta</h2><button class="close" id="closeGoalBtn">✕</button></div>
-      <div class="goal-form">
-        <input id="goalName" placeholder="Ex: Fundo veterinário">
-        <select id="goalCategory"><option value="casa">🏠 Casa</option><option value="pets">🐾 Pets</option></select>
-        <input id="goalTarget" type="number" step="0.01" min="0" placeholder="Valor alvo">
-        <button class="yellow-btn full" id="addGoalBtn">Criar meta</button>
-      </div>
-    </div>
-  </div>
-
+  <nav class="bottom-nav"><button class="nav-btn active" data-screen="missoes">⚡<br>Missões</button><button class="nav-btn" data-screen="base">📊<br>Base</button><button class="nav-btn" data-screen="cofrinho">🐷<br>Cofrinho</button><button class="nav-btn" data-screen="hall">🏆<br>Hall</button><button class="nav-btn" data-screen="historico">📜<br>Histórico</button></nav>
+  <div class="modal-bg" id="missionModal"><div class="modal large"><div class="modal-head"><h2 id="missionModalTitle">Missão</h2><button class="close" id="closeMissionBtn">✕</button></div><div id="missionModalBody"></div></div></div>
+  <div class="modal-bg" id="goalModal"><div class="modal"><div class="modal-head"><h2>🎯 Criar meta</h2><button class="close" id="closeGoalBtn">✕</button></div><div class="goal-form"><input id="goalName" placeholder="Ex: Fundo veterinário"><select id="goalCategory"><option value="casa">🏠 Casa</option><option value="pets">🐾 Pets</option><option value="saude">🧠 Saúde</option></select><input id="goalTarget" type="number" step="0.01" min="0" placeholder="Valor alvo"><button class="yellow-btn full" id="addGoalBtn">Criar meta</button></div></div></div>
   <script src="app.js"></script>
 </body>
 </html>
