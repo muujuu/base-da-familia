@@ -1,81 +1,23 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="light">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta name="theme-color" content="#fff7fb"/>
-  <title>Base da Família</title>
-  <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#fff7fb"><title>Base da Família</title>
+<link rel="manifest" href="manifest.json"><link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <div class="app">
-    <header class="header">
-      <div class="brand">
-        <div class="logo"><img src="icon-192.png" alt="Base"></div>
-        <div><h1>Base da Família</h1><p class="subtitle">Rotina, saúde, cofrinho e conquistas.</p><div class="sync"><span class="dot local" id="syncDot"></span><span id="syncText">modo local</span></div></div>
-      </div>
-      <div class="top-mini">
-        <div class="mini"><small>🔥 Sequência</small><strong id="streakTop">0 dias</strong></div>
-        <div class="mini"><small>🍺 Base</small><strong id="baseBeerTop">Bavaria</strong></div>
-        <div class="mini"><small>🐷 Cofrinho</small><strong id="goalWealthTop">R$ 0,00</strong></div>
-        <div class="mini"><small>🏆 Hall</small><strong id="achTop">0</strong></div>
-      </div>
-    </header>
-    <main>
-      <section id="screen-missoes" class="screen active">
-        <div class="card mission-shell">
-          <div class="section-head compact-head">
-            <h2>⚡ Missões</h2>
-            <span class="pill" id="missionTodaySummary">0 hoje</span>
-          </div>
-          <div class="mission-mode-tabs">
-            <button class="mode-tab active" data-mission-mode="base">Base</button>
-            <button class="mode-tab" data-mission-mode="daily">Diárias</button>
-            <button class="mode-tab" data-mission-mode="weekly">Semanais</button>
-            <button class="mode-tab" data-mission-mode="monthly">Mensais</button>
-          </div>
-        </div>
-
-        <div id="missionViewBase" class="mission-view active">
-          <div class="quick-grid mission-lobby-grid">
-            <div class="stat-card"><strong id="todayName">Hoje</strong><span id="todayDateLabel">--/--</span></div>
-            <div class="stat-card"><strong id="dueTodayCount">0</strong><span>previstas hoje</span></div>
-            <div class="stat-card"><strong id="doneTodayCount">0</strong><span>feitas hoje</span></div>
-            <div class="stat-card"><strong id="perfectDayFlag">—</strong><span>dia perfeito</span></div>
-          </div>
-
-          <div class="card hero-card"><div class="section-head"><h2>🔥 Próxima geral</h2></div><div id="nextMissionCard"></div></div>
-
-          <div class="three-col" id="nextByFrequency"></div>
-
-          <div class="card"><div class="section-head"><h2>⚠️ Atrasadas</h2><span class="pill" id="lateCount">0</span></div><div id="lateSummaryCard"></div></div>
-
-          <div class="card"><div class="section-head"><h2>🏡 Perfil da Base</h2></div><div id="baseProfileCard" class="quick-grid"></div></div>
-        </div>
-
-        <div id="missionViewDaily" class="mission-view">
-          <div class="card"><div class="section-head"><h2>☀️ Diárias</h2><button class="small" data-form-toggle="dailyInlineForm">+ Nova diária</button></div><div id="dailyMissions" class="mission-cards"></div><div id="dailyInlineForm" class="accordion-body"></div></div>
-        </div>
-
-        <div id="missionViewWeekly" class="mission-view">
-          <div class="card"><div class="section-head"><h2>📆 Semanais</h2><button class="small" data-form-toggle="weeklyInlineForm">+ Nova semanal</button></div><div id="weekOverview" class="week-overview"></div><div id="selectedWeekDayMissions" class="mission-cards"></div><div id="weeklyInlineForm" class="accordion-body"></div></div>
-        </div>
-
-        <div id="missionViewMonthly" class="mission-view">
-          <div class="card"><div class="section-head"><h2>🗓️ Mensais</h2><button class="small" data-form-toggle="monthlyInlineForm">+ Nova mensal</button></div><div id="monthlyMissions" class="mission-cards"></div><div id="monthlyInlineForm" class="accordion-body"></div></div>
-        </div>
-      </section>
-      <section id="screen-base" class="screen"><div class="three-col"><div class="dash-card"><h3>👨 Mu</h3><div class="dash-main" id="dashMuBeer">🍺 Bavaria</div><p class="subtitle" id="dashMuSummary"></p><div id="dashMuNext"></div></div><div class="dash-card"><h3>👩 Ju</h3><div class="dash-main" id="dashJuBeer">🍺 Bavaria</div><p class="subtitle" id="dashJuSummary"></p><div id="dashJuNext"></div></div><div class="dash-card"><h3>🏡 Base</h3><div class="dash-main" id="dashBaseBeer">🍺 Bavaria</div><p class="subtitle" id="dashBaseSummary"></p><div id="dashBaseNext"></div></div></div><div class="card"><div class="section-head"><h2>🎁 Recompensas disponíveis</h2><span class="pill" id="availableRewardCount">0 liberadas</span></div><div id="availableRewards" class="reward-list"></div></div><div class="card"><div class="section-head"><h2>🔒 Próximas recompensas</h2><span class="pill">difíceis de propósito</span></div><div id="lockedRewards" class="reward-list"></div></div><div class="card"><div class="section-head"><h2>🍺 Adega</h2><span class="pill">níveis</span></div><div class="three-col" id="beerCards"></div></div><div class="card"><div class="section-head"><h2>🤝 Responsabilidades</h2><span class="pill">equilíbrio saudável</span></div><div class="three-col" id="memberStats"></div></div></section>
-      <section id="screen-cofrinho" class="screen"><div class="card"><div class="section-head"><div><h2>🐷 Cofrinho</h2><p class="subtitle">Só metas, quanto tem e quanto falta.</p></div><button class="small" id="openGoalBtn">+ Nova meta</button></div><div class="quick-grid"><div class="stat-card"><strong id="cofrinhoTotal">R$ 0,00</strong><span>guardado</span></div><div class="stat-card"><strong id="cofrinhoTarget">R$ 0,00</strong><span>objetivo total</span></div><div class="stat-card"><strong id="cofrinhoMissing">R$ 0,00</strong><span>faltando</span></div><div class="stat-card"><strong id="cofrinhoCount">0</strong><span>metas ativas</span></div></div><div id="goalList" class="goal-grid"></div></div></section>
-      <section id="screen-hall" class="screen"><div class="card"><div class="section-head"><div><h2>🏆 Hall de Conquistas</h2><p class="subtitle">Conquistas pequenas, divididas por tema.</p></div><span class="pill"><span id="achievementBadge">0</span> desbloqueadas</span></div><div class="trophy-tabs" id="trophyTabs"></div><div class="trophy-grid" id="achievementList"></div></div></section>
-      <section id="screen-historico" class="screen"><div class="card"><div class="section-head"><h2>📜 Histórico no calendário</h2><span class="pill">não muda com missão nova</span></div><div class="month-controls"><button class="small" id="prevMonthBtn">◀ Mês</button><strong id="monthTitle"></strong><button class="small" id="nextMonthBtn">Mês ▶</button></div><div class="days"><div class="day-name">Seg</div><div class="day-name">Ter</div><div class="day-name">Qua</div><div class="day-name">Qui</div><div class="day-name">Sex</div><div class="day-name">Sáb</div><div class="day-name">Dom</div></div><div class="days" id="calendarDays"></div></div><div class="card"><div class="section-head"><h2>✅ Missões feitas</h2><div class="filters"><button class="chip active" data-history-filter="todas">Todas</button><button class="chip" data-history-filter="Mu">Mu</button><button class="chip" data-history-filter="Ju">Ju</button><button class="chip" data-history-filter="casa">Casa</button><button class="chip" data-history-filter="pets">Pets</button><button class="chip" data-history-filter="saude">Saúde</button></div></div><div id="completedList"></div></div><div class="card"><div class="section-head"><h2>📜 Recompensas resgatadas</h2><span class="pill">histórico</span></div><div id="rewardHistory"></div></div><div class="card"><div class="section-head"><h2>📊 Save anual</h2><span class="pill">resumo</span></div><div class="three-col" id="annualStats"></div></div></section>
-    </main>
-  </div>
-  <nav class="bottom-nav"><button class="nav-btn active" data-screen="missoes">⚡<br>Missões</button><button class="nav-btn" data-screen="base">📊<br>Base</button><button class="nav-btn" data-screen="cofrinho">🐷<br>Cofrinho</button><button class="nav-btn" data-screen="hall">🏆<br>Hall</button><button class="nav-btn" data-screen="historico">📜<br>Histórico</button></nav>
-  <div class="modal-bg" id="missionModal"><div class="modal large"><div class="modal-head"><h2 id="missionModalTitle">Missão</h2><button class="close" id="closeMissionBtn">✕</button></div><div id="missionModalBody"></div></div></div>
-  <div class="modal-bg" id="goalModal"><div class="modal"><div class="modal-head"><h2>🎯 Criar meta</h2><button class="close" id="closeGoalBtn">✕</button></div><div class="goal-form"><input id="goalName" placeholder="Ex: Fundo veterinário"><select id="goalCategory"><option value="casa">🏠 Casa</option><option value="pets">🐾 Pets</option><option value="saude">🧠 Saúde</option></select><input id="goalTarget" type="number" step="0.01" min="0" placeholder="Valor alvo"><button class="yellow-btn full" id="addGoalBtn">Criar meta</button></div></div></div>
-  <script src="app.js"></script>
-</body>
-</html>
+<div class="app">
+<header class="header"><div class="brand"><div class="logo"><img src="icon-192.png" alt="Base"></div><div><h1>Base da Família</h1><div class="sync"><span class="dot local" id="syncDot"></span><span id="syncText">modo local</span></div></div></div><button class="theme-toggle" id="themeToggle">🌙 Tema</button></header>
+<main>
+<section id="screen-missoes" class="screen active"><div class="card compact"><div class="section-head"><h2>Missões</h2><span class="pill" id="todayDate">Hoje</span></div><div class="mission-tabs"><button class="mission-tab active" data-mission-view="base">Base</button><button class="mission-tab" data-mission-view="daily">Diárias</button><button class="mission-tab" data-mission-view="weekly">Semanais</button><button class="mission-tab" data-mission-view="monthly">Mensais</button></div></div><div id="missionView"></div></section>
+<section id="screen-base" class="screen"><div class="three-col"><div class="dash-card"><h3>👨 Mu</h3><div class="dash-main" id="dashMuBeer">🍺 Bavaria</div><p id="dashMuSummary"></p></div><div class="dash-card"><h3>👩 Ju</h3><div class="dash-main" id="dashJuBeer">🍺 Bavaria</div><p id="dashJuSummary"></p></div><div class="dash-card"><h3>🏡 Base</h3><div class="dash-main" id="dashBaseBeer">🍺 Bavaria</div><p id="dashBaseSummary"></p></div></div><div class="card"><div class="section-head"><h2>🍺 Adega</h2></div><div class="three-col" id="beerCards"></div></div></section>
+<section id="screen-cofrinho" class="screen"><div class="card"><div class="section-head"><h2>🐷 Cofrinho</h2><button class="small" id="openGoalBtn">+ Meta</button></div><div class="stats-grid"><div class="stat"><strong id="cofrinhoTotal">R$ 0,00</strong><span>guardado</span></div><div class="stat"><strong id="cofrinhoMissing">R$ 0,00</strong><span>faltando</span></div><div class="stat"><strong id="cofrinhoCount">0</strong><span>metas</span></div></div><div id="goalList" class="goal-list"></div></div></section>
+<section id="screen-hall" class="screen"><div class="card"><div class="section-head"><h2>🏆 Hall</h2><span class="pill"><span id="achievementBadge">0</span> desbloqueadas</span></div><div class="trophy-tabs" id="trophyTabs"></div><div class="trophy-grid" id="achievementList"></div></div></section>
+<section id="screen-historico" class="screen"><div class="card"><div class="section-head"><h2>📜 Histórico</h2></div><div class="month-controls"><button class="small" id="prevMonthBtn">◀</button><strong id="monthTitle"></strong><button class="small" id="nextMonthBtn">▶</button></div><div class="days"><div class="day-name">Seg</div><div class="day-name">Ter</div><div class="day-name">Qua</div><div class="day-name">Qui</div><div class="day-name">Sex</div><div class="day-name">Sáb</div><div class="day-name">Dom</div></div><div class="days" id="calendarDays"></div></div><div class="card"><div class="section-head"><h2>✅ Feitas</h2></div><div id="completedList" class="list"></div></div></section>
+</main></div>
+<nav class="bottom-nav"><button class="nav-btn active" data-screen="missoes">⚡<br>Missões</button><button class="nav-btn" data-screen="base">📊<br>Base</button><button class="nav-btn" data-screen="cofrinho">🐷<br>Cofrinho</button><button class="nav-btn" data-screen="hall">🏆<br>Hall</button><button class="nav-btn" data-screen="historico">📜<br>Histórico</button></nav>
+<div class="modal-bg" id="taskModal"><div class="modal"><div class="modal-head"><h2 id="taskModalTitle">Nova missão</h2><button class="close" id="closeTaskModal">✕</button></div><div class="form"><input id="taskText" placeholder="Nome da missão"><select id="taskCategory"><option value="casa">🏠 Casa</option><option value="pets">🐾 Pets</option><option value="saude">🧠 Saúde</option></select><select id="taskPerson"><option value="Mu">👨 Mu</option><option value="Ju">👩 Ju</option><option value="Ambos">👫 Ambos</option></select><select id="taskDifficulty"><option value="facil">Fácil</option><option value="media">Média</option><option value="dificil">Difícil</option><option value="muito_dificil">Muito difícil</option></select><input id="taskMinutes" type="number" min="1" value="5" placeholder="Minutos"><input id="taskInterval" type="number" min="1" value="1" placeholder="A cada X dias"><input id="taskMonthlyDay" type="number" min="1" max="31" value="1" placeholder="Dia do mês"><div id="weekdayBox" class="weekday-box"></div><button id="saveTaskBtn">Salvar missão</button></div></div></div>
+<div class="modal-bg" id="goalModal"><div class="modal"><div class="modal-head"><h2>Nova meta</h2><button class="close" id="closeGoalBtn">✕</button></div><div class="form"><input id="goalName" placeholder="Nome da meta"><select id="goalCategory"><option value="casa">🏠 Casa</option><option value="pets">🐾 Pets</option><option value="saude">🧠 Saúde</option></select><input id="goalTarget" type="number" min="0" step="0.01" placeholder="Valor alvo"><button id="saveGoalBtn">Salvar meta</button></div></div></div>
+<script src="app.js"></script>
+</body></html>
