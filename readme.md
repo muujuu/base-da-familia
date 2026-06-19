@@ -1,15 +1,11 @@
-# Base da Família v2 - Rotina
+# Base da Família v2.1 - Missões em mini-app
 
-Implementado:
-- Missões como rotina programada, não checklist infinito.
-- Missão diária, semanal e mensal recorrente.
-- Tempo personalizado em minutos.
-- Semanal com vários dias, exemplo: lixo 3x por semana.
-- Categoria Saúde além de Casa e Pets.
-- XP da Base sobe com Casa, Pets e Saúde.
-- Cofrinho simplificado: metas, guardado e faltante.
-- Histórico com snapshot por dia: missão nova não altera acerto antigo.
-- Missões feitas ficam no Histórico.
-- Pacotes rápidos para configurar sem criar tudo manualmente.
+Mudanças:
+- Aba Missões agora tem navegação interna: Base, Diárias, Semanais e Mensais.
+- Removidos pacotes rápidos.
+- Removidos textos/legendas extras da aba Missões.
+- Tela Base mostra só o lobby: hoje, próxima geral, próxima por frequência, atrasadas e perfil da base.
+- Telas Diárias/Semanais/Mensais têm visualização própria.
 
-IMPORTANTE: abra app.js e cole sua chave pública do Supabase em SUPABASE_ANON_KEY.
+Antes de subir, confira no app.js:
+SUPABASE_ANON_KEY: "sua chave publishable"

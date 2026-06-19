@@ -25,13 +25,47 @@
     </header>
     <main>
       <section id="screen-missoes" class="screen active">
-        <div class="card hero-card"><div class="section-head"><div><h2>⚡ Próxima missão</h2><p class="subtitle">Entrar, marcar, sair.</p></div><span class="pill" id="missionTodaySummary">0 hoje</span></div><div id="nextMissionCard"></div></div>
-        <div class="quick-grid"><div class="stat-card"><strong id="dueTodayCount">0</strong><span>previstas hoje</span></div><div class="stat-card"><strong id="doneTodayCount">0</strong><span>feitas hoje</span></div><div class="stat-card"><strong id="lateCount">0</strong><span>atrasadas</span></div><div class="stat-card"><strong id="perfectDayFlag">—</strong><span>dia perfeito</span></div></div>
-        <div class="card"><div class="section-head"><h2>📌 Hoje</h2><div class="filters"><button class="chip active" data-mission-filter="todas">Todas</button><button class="chip" data-mission-filter="casa">🏠 Casa</button><button class="chip" data-mission-filter="pets">🐾 Pets</button><button class="chip" data-mission-filter="saude">🧠 Saúde</button></div></div><div id="todayMissions" class="mission-cards"></div></div>
-        <div class="card"><div class="section-head"><h2>⚠️ Atrasadas</h2><span class="pill">sem culpa, só resolver</span></div><div id="lateMissions" class="mission-cards"></div></div>
-        <div class="card"><div class="section-head"><h2>📅 Próximos 7 dias</h2><span class="pill">rotina programada</span></div><div id="upcomingMissions" class="timeline"></div></div>
-        <div class="card"><div class="section-head"><div><h2>➕ Criar rotina</h2><p class="subtitle">Crie uma vez. Ela reaparece sozinha.</p></div><span class="pill" id="createXpPreview">⭐ 10 XP</span></div><div class="accordion"><button class="accordion-head" data-accordion="dailyForm">☀️ Missão diária</button><div id="dailyForm" class="accordion-body"></div><button class="accordion-head" data-accordion="weeklyForm">📆 Missão semanal</button><div id="weeklyForm" class="accordion-body"></div><button class="accordion-head" data-accordion="monthlyForm">🗓️ Missão mensal</button><div id="monthlyForm" class="accordion-body"></div></div></div>
-        <div class="card"><div class="section-head"><div><h2>📦 Pacotes rápidos</h2><p class="subtitle">Para não cadastrar tudo na mão.</p></div><span class="pill">1 clique</span></div><div class="preset-grid" id="presetGrid"></div></div>
+        <div class="card mission-shell">
+          <div class="section-head compact-head">
+            <h2>⚡ Missões</h2>
+            <span class="pill" id="missionTodaySummary">0 hoje</span>
+          </div>
+          <div class="mission-mode-tabs">
+            <button class="mode-tab active" data-mission-mode="base">Base</button>
+            <button class="mode-tab" data-mission-mode="daily">Diárias</button>
+            <button class="mode-tab" data-mission-mode="weekly">Semanais</button>
+            <button class="mode-tab" data-mission-mode="monthly">Mensais</button>
+          </div>
+        </div>
+
+        <div id="missionViewBase" class="mission-view active">
+          <div class="quick-grid mission-lobby-grid">
+            <div class="stat-card"><strong id="todayName">Hoje</strong><span id="todayDateLabel">--/--</span></div>
+            <div class="stat-card"><strong id="dueTodayCount">0</strong><span>previstas hoje</span></div>
+            <div class="stat-card"><strong id="doneTodayCount">0</strong><span>feitas hoje</span></div>
+            <div class="stat-card"><strong id="perfectDayFlag">—</strong><span>dia perfeito</span></div>
+          </div>
+
+          <div class="card hero-card"><div class="section-head"><h2>🔥 Próxima geral</h2></div><div id="nextMissionCard"></div></div>
+
+          <div class="three-col" id="nextByFrequency"></div>
+
+          <div class="card"><div class="section-head"><h2>⚠️ Atrasadas</h2><span class="pill" id="lateCount">0</span></div><div id="lateSummaryCard"></div></div>
+
+          <div class="card"><div class="section-head"><h2>🏡 Perfil da Base</h2></div><div id="baseProfileCard" class="quick-grid"></div></div>
+        </div>
+
+        <div id="missionViewDaily" class="mission-view">
+          <div class="card"><div class="section-head"><h2>☀️ Diárias</h2><button class="small" data-form-toggle="dailyInlineForm">+ Nova diária</button></div><div id="dailyMissions" class="mission-cards"></div><div id="dailyInlineForm" class="accordion-body"></div></div>
+        </div>
+
+        <div id="missionViewWeekly" class="mission-view">
+          <div class="card"><div class="section-head"><h2>📆 Semanais</h2><button class="small" data-form-toggle="weeklyInlineForm">+ Nova semanal</button></div><div id="weekOverview" class="week-overview"></div><div id="selectedWeekDayMissions" class="mission-cards"></div><div id="weeklyInlineForm" class="accordion-body"></div></div>
+        </div>
+
+        <div id="missionViewMonthly" class="mission-view">
+          <div class="card"><div class="section-head"><h2>🗓️ Mensais</h2><button class="small" data-form-toggle="monthlyInlineForm">+ Nova mensal</button></div><div id="monthlyMissions" class="mission-cards"></div><div id="monthlyInlineForm" class="accordion-body"></div></div>
+        </div>
       </section>
       <section id="screen-base" class="screen"><div class="three-col"><div class="dash-card"><h3>👨 Mu</h3><div class="dash-main" id="dashMuBeer">🍺 Bavaria</div><p class="subtitle" id="dashMuSummary"></p><div id="dashMuNext"></div></div><div class="dash-card"><h3>👩 Ju</h3><div class="dash-main" id="dashJuBeer">🍺 Bavaria</div><p class="subtitle" id="dashJuSummary"></p><div id="dashJuNext"></div></div><div class="dash-card"><h3>🏡 Base</h3><div class="dash-main" id="dashBaseBeer">🍺 Bavaria</div><p class="subtitle" id="dashBaseSummary"></p><div id="dashBaseNext"></div></div></div><div class="card"><div class="section-head"><h2>🎁 Recompensas disponíveis</h2><span class="pill" id="availableRewardCount">0 liberadas</span></div><div id="availableRewards" class="reward-list"></div></div><div class="card"><div class="section-head"><h2>🔒 Próximas recompensas</h2><span class="pill">difíceis de propósito</span></div><div id="lockedRewards" class="reward-list"></div></div><div class="card"><div class="section-head"><h2>🍺 Adega</h2><span class="pill">níveis</span></div><div class="three-col" id="beerCards"></div></div><div class="card"><div class="section-head"><h2>🤝 Responsabilidades</h2><span class="pill">equilíbrio saudável</span></div><div class="three-col" id="memberStats"></div></div></section>
       <section id="screen-cofrinho" class="screen"><div class="card"><div class="section-head"><div><h2>🐷 Cofrinho</h2><p class="subtitle">Só metas, quanto tem e quanto falta.</p></div><button class="small" id="openGoalBtn">+ Nova meta</button></div><div class="quick-grid"><div class="stat-card"><strong id="cofrinhoTotal">R$ 0,00</strong><span>guardado</span></div><div class="stat-card"><strong id="cofrinhoTarget">R$ 0,00</strong><span>objetivo total</span></div><div class="stat-card"><strong id="cofrinhoMissing">R$ 0,00</strong><span>faltando</span></div><div class="stat-card"><strong id="cofrinhoCount">0</strong><span>metas ativas</span></div></div><div id="goalList" class="goal-grid"></div></div></section>
