@@ -1,11 +1,13 @@
-# Base da Família v2.1 - Missões em mini-app
+# Base da Família - projeto limpo
 
-Mudanças:
-- Aba Missões agora tem navegação interna: Base, Diárias, Semanais e Mensais.
-- Removidos pacotes rápidos.
-- Removidos textos/legendas extras da aba Missões.
-- Tela Base mostra só o lobby: hoje, próxima geral, próxima por frequência, atrasadas e perfil da base.
-- Telas Diárias/Semanais/Mensais têm visualização própria.
+Arquivos limpos, sem RTF/TextEdit.
 
-Antes de subir, confira no app.js:
-SUPABASE_ANON_KEY: "sua chave publishable"
+Como usar:
+1. Na pasta `base-da-familia`, apague tudo que NÃO for `.git`.
+2. Copie estes arquivos para dentro dela.
+3. GitHub Desktop > Changes > commit: `projeto limpo v1`.
+4. Push origin.
+5. Aguarde o Netlify publicar.
+6. Abra o site e force atualização: Cmd + Shift + R.
+
+Observação: não edite `index.html`, `style.css` ou `app.js` com TextEdit em modo formatado. Use VS Code, Cursor, Sublime ou qualquer editor de código/texto simples.
