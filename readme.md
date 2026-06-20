@@ -1,21 +1,32 @@
-# Base da Família v7.2 - Correções
+# Base da Família V8 Core Limpo
 
-Correções:
-- Progresso do dia agora reconhece tarefa feita pelo dueDate e pela data real de conclusão.
-- Função Netlify send-push reescrita em CommonJS para evitar erro de deploy/runtime.
-- Função aceita ONESIGNAL_API_KEY ou ONESIGNAL_REST_API_KEY.
-- Mantém OneSignal App ID configurado.
-- Mantém notificações inteligentes e competição saudável.
+Refatoração completa da lógica.
 
-Depois de subir:
-1. Commit e Push.
-2. Aguarde deploy no Netlify.
-3. No PC, faça hard refresh.
-4. No celular:
-   - iPhone: abrir no Safari > Compartilhar > Adicionar à Tela de Início.
-   - Abrir pelo ícone instalado.
-   - Entrar em 🔔 Avisos > Ativar push real.
-5. Testar botão Teste servidor.
+Inclui:
+- Perfil obrigatório ao entrar: Mu/Ju.
+- Missões com responsável e executor separados: assignedTo / completedBy.
+- Correção central da contagem: todo dashboard, histórico, XP, Dia Perfeito e notificações usam a mesma função.
+- Sistemas da casa: Pets, Casa, Financeiro, Relacionamento, Saúde.
+- Saúde da Base e saúde por sistema.
+- Streak por categoria.
+- Missões emergenciais.
+- Energia da Base.
+- Previsão de sobrecarga.
+- Conquistas reais por sistema, tempo e Dia Perfeito.
+- Competição saudável Mu x Ju.
+- Calendário invisível.
+- Missões encadeadas.
+- Perfil/avatar com itens liberados por XP.
+- Tema claro/escuro.
+- OneSignal pronto.
+- Netlify Function agendada.
 
-Observação:
-Teste local funciona só no aparelho atual. Push real com app fechado só funciona em aparelhos que clicaram em Ativar push real e aceitaram notificação.
+Variáveis do Netlify:
+- ONESIGNAL_APP_ID
+- ONESIGNAL_API_KEY
+- SUPABASE_URL
+- SUPABASE_ANON_KEY
+
+Importante:
+Esta V8 usa um novo ID no Supabase: base-mu-ju-v8.
+Isso evita misturar dados antigos bugados com a base nova.
