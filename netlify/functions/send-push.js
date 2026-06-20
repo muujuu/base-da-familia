@@ -1,1 +1,128 @@
-const SUPABASE_URL=process.env.SUPABASE_URL||"https://ukpbnqzsthxywgabpumj.supabase.co";const SUPABASE_ANON_KEY=process.env.SUPABASE_ANON_KEY||"sb_publishable_3w3Z8dhj2zjDB7Yl2AB5RA_0eHzqL2a";const ONESIGNAL_APP_ID=process.env.ONESIGNAL_APP_ID;const ONESIGNAL_REST_API_KEY=process.env.ONESIGNAL_REST_API_KEY;function brToday(){let n=new Date(),b=new Date(n.toLocaleString("en-US",{timeZone:"America/Sao_Paulo"}));return`${b.getFullYear()}-${String(b.getMonth()+1).padStart(2,"0")}-${String(b.getDate()).padStart(2,"0")}`}function parse(k){return new Date(k+"T00:00:00")}function key(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}function due(t,d){if(t.active===false)return false;let st=parse(t.startDate||(t.createdAt||brToday()).slice(0,10)),k=key(d);if(k<key(st))return false;if(t.scheduleType==="daily"){let days=Math.floor((parse(k)-st)/86400000);return days%Number(t.interval||1)===0}if(t.scheduleType==="weekly")return(t.weeklyDays||[]).map(Number).includes(d.getDay());if(t.scheduleType==="monthly")return d.getDate()===Number(t.monthlyDay||1);return false}function done(cs,id,k){return(cs||[]).some(c=>c.taskId===id&&c.dueDate===k)}function stats(data,p){let rows=(data.completions||[]).filter(c=>c.person===p||c.person==="Ambos");return{person:p,tasks:rows.length,xp:rows.reduce((s,c)=>s+Number(c.xp||0)/(c.person==="Ambos"?2:1),0)}}function choose(data){let k=brToday(),d=parse(k),tasks=data.tasks||[],cs=data.completions||[],dueToday=tasks.filter(t=>due(t,d)),miss=dueToday.filter(t=>!done(cs,t.id,k)),late=[];for(let i=1;i<=7;i++){let x=new Date(d);x.setDate(x.getDate()-i);let dk=key(x);tasks.filter(t=>due(t,x)).forEach(t=>{if(!done(cs,t.id,dk))late.push(t)})}let mu=stats(data,"Mu"),ju=stats(data,"Ju"),bx=mu.xp<=ju.xp?mu:ju,bt=mu.tasks<=ju.tasks?mu:ju;if(late.length)return{title:"⚠️ Missões atrasadas",body:`${late.length} atrasada(s). Comece por: ${late[0].text}.`};if(miss.length===1)return{title:"⭐ Quase Dia Perfeito",body:`Falta só: ${miss[0].text}.`};if(Math.abs(mu.tasks-ju.tasks)>=3)return{title:"🏁 Competição saudável",body:`${bt.person} fez menos missões. Bora buscar umas rápidas?`};if(Math.abs(mu.xp-ju.xp)>=100)return{title:"📊 XP em disputa",body:`${bx.person} está atrás no XP. Uma missão rápida já ajuda.`};if(miss.length)return{title:"⚡ Missões de hoje",body:`Você tem ${miss.length} pendente(s). Sugestão: ${miss[0].text}.`};return{title:"🌿 Base tranquila",body:"Nenhum alerta pesado agora."}}async function send(m){if(!ONESIGNAL_APP_ID||!ONESIGNAL_REST_API_KEY)return{ok:false,error:"Configure ONESIGNAL_APP_ID e ONESIGNAL_REST_API_KEY no Netlify."};let r=await fetch("https://api.onesignal.com/notifications",{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Key ${ONESIGNAL_REST_API_KEY}`},body:JSON.stringify({app_id:ONESIGNAL_APP_ID,included_segments:["Subscribed Users"],headings:{pt:m.title,en:m.title},contents:{pt:m.body,en:m.body},url:process.env.URL||"https://casinhaa.netlify.app"})});return{ok:r.ok,status:r.status,response:await r.text()}}export default async()=>{try{let r=await fetch(`${SUPABASE_URL}/rest/v1/base_familia?id=eq.base-mu-ju&select=data`,{headers:{apikey:SUPABASE_ANON_KEY,Authorization:`Bearer ${SUPABASE_ANON_KEY}`}}),j=await r.json(),data=j?.[0]?.data||{},m=choose(data),res=await send(m);return new Response(JSON.stringify({message:m,result:res}),{status:res.ok?200:500})}catch(e){return new Response(JSON.stringify({error:String(e)}),{status:500})}}
+const SUPABASE_URL = process.env.SUPABASE_URL || "https://ukpbnqzsthxywgabpumj.supabase.co";
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "sb_publishable_3w3Z8dhj2zjDB7Yl2AB5RA_0eHzqL2a";
+const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID;
+const ONESIGNAL_API_KEY = process.env.ONESIGNAL_API_KEY || process.env.ONESIGNAL_REST_API_KEY;
+
+function brNow() {
+  return new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+}
+function dateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function todayKey() { return dateKey(brNow()); }
+function parseDate(k){ return new Date(k+"T00:00:00"); }
+
+function dueOnDate(t,date){
+  if(t.active===false) return false;
+  const dk = dateKey(date);
+  const start = parseDate(t.startDate || (t.createdAt || dk).slice(0,10));
+  if(dk < dateKey(start)) return false;
+
+  if(t.scheduleType==="daily"){
+    const days = Math.floor((parseDate(dk)-start)/86400000);
+    return days % Number(t.interval || 1) === 0;
+  }
+  if(t.scheduleType==="weekly") return (t.weeklyDays||[]).map(Number).includes(date.getDay());
+  if(t.scheduleType==="monthly") return date.getDate() === Number(t.monthlyDay || 1);
+  return false;
+}
+
+function done(completions, taskId, dueDate){
+  return (completions || []).some(c => {
+    if(c.taskId !== taskId) return false;
+    if(c.dueDate === dueDate) return true;
+    if(c.completedAt && dateKey(new Date(c.completedAt)) === dueDate) return true;
+    return false;
+  });
+}
+
+function personStats(data, person){
+  const completions = data.completions || [];
+  const rows = completions.filter(c => c.person === person || c.person === "Ambos");
+  const tasks = rows.length;
+  const xp = rows.reduce((s,c)=>s + Number(c.xp || 0)/(c.person==="Ambos"?2:1),0);
+  return { person, tasks, xp };
+}
+
+function chooseMessage(data){
+  const key = todayKey();
+  const date = parseDate(key);
+  const tasks = data.tasks || [];
+  const completions = data.completions || [];
+  const dueToday = tasks.filter(t => dueOnDate(t,date));
+  const missing = dueToday.filter(t => !done(completions,t.id,key));
+
+  const late = [];
+  for(let i=1;i<=7;i++){
+    const d = parseDate(key);
+    d.setDate(d.getDate()-i);
+    const dk = dateKey(d);
+    tasks.filter(t => dueOnDate(t,d)).forEach(t => {
+      if(!done(completions,t.id,dk)) late.push({ task:t, date:dk });
+    });
+  }
+
+  const mu = personStats(data,"Mu");
+  const ju = personStats(data,"Ju");
+  const behindXp = mu.xp <= ju.xp ? mu : ju;
+  const behindTasks = mu.tasks <= ju.tasks ? mu : ju;
+
+  if(late.length) return { title:"⚠️ Missões atrasadas", body:`${late.length} atrasada(s). Comece por: ${late[0].task.text}.` };
+  if(missing.length === 1) return { title:"⭐ Quase Dia Perfeito", body:`Falta só: ${missing[0].text}.` };
+  if(Math.abs(mu.tasks - ju.tasks) >= 3) return { title:"🏁 Competição saudável", body:`${behindTasks.person} fez menos missões. Bora buscar umas rápidas?` };
+  if(Math.abs(mu.xp - ju.xp) >= 100) return { title:"📊 XP em disputa", body:`${behindXp.person} está atrás no XP. Uma missão rápida já ajuda.` };
+  if(missing.length) return { title:"⚡ Missões de hoje", body:`Você tem ${missing.length} missão(ões) pendente(s). Sugestão: ${missing[0].text}.` };
+  return { title:"🌿 Base tranquila", body:"Nenhum alerta pesado agora. Boa!" };
+}
+
+async function sendPush(message){
+  if(!ONESIGNAL_APP_ID || !ONESIGNAL_API_KEY) {
+    return { ok:false, status:500, response:"Configure ONESIGNAL_APP_ID e ONESIGNAL_API_KEY no Netlify." };
+  }
+
+  const res = await fetch("https://api.onesignal.com/notifications", {
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "Authorization":`Key ${ONESIGNAL_API_KEY}`
+    },
+    body:JSON.stringify({
+      app_id: ONESIGNAL_APP_ID,
+      included_segments:["Subscribed Users"],
+      headings:{ en: message.title, pt: message.title },
+      contents:{ en: message.body, pt: message.body },
+      url: process.env.URL || "https://casinhaa.netlify.app"
+    })
+  });
+
+  const text = await res.text();
+  return { ok:res.ok, status:res.status, response:text };
+}
+
+exports.handler = async function(event, context) {
+  try {
+    const row = await fetch(`${SUPABASE_URL}/rest/v1/base_familia?id=eq.base-mu-ju&select=data`, {
+      headers:{
+        apikey:SUPABASE_ANON_KEY,
+        Authorization:`Bearer ${SUPABASE_ANON_KEY}`
+      }
+    });
+
+    const json = await row.json();
+    const data = json?.[0]?.data || {};
+    const message = chooseMessage(data);
+    const result = await sendPush(message);
+
+    return {
+      statusCode: result.ok ? 200 : 500,
+      headers: { "Content-Type":"application/json" },
+      body: JSON.stringify({ message, result })
+    };
+  } catch(e) {
+    return {
+      statusCode: 500,
+      headers: { "Content-Type":"application/json" },
+      body: JSON.stringify({ error:String(e) })
+    };
+  }
+};
