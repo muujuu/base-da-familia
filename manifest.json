@@ -3,8 +3,8 @@
   "short_name": "Base",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#fff7fb",
-  "theme_color": "#fff7fb",
+  "background_color": "#11101a",
+  "theme_color": "#11101a",
   "icons": [
     {
       "src": "icon-192.png",
