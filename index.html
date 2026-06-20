@@ -168,11 +168,6 @@
           <option value="relacionamento">❤️ Relacionamento</option>
           <option value="saude">🧠 Saúde</option>
         </select>
-        <select id="taskAssigned">
-          <option value="Mu">👨 Mu</option>
-          <option value="Ju">👩 Ju</option>
-          <option value="Ambos">👫 Ambos</option>
-        </select>
         <select id="taskDifficulty">
           <option value="facil">Fácil</option>
           <option value="media">Média</option>
@@ -185,18 +180,24 @@
           <option value="alta">Prioridade alta</option>
           <option value="emergencial">Emergencial</option>
         </select>
+        <label class="field-label">Duração estimada</label>
         <input id="taskMinutes" type="number" min="1" value="5" placeholder="Minutos">
+        <label class="field-label">Horário preferido para lembrete</label>
         <input id="taskPreferredTime" type="time" placeholder="Horário preferido">
-        <input id="taskInterval" type="number" min="1" value="1" placeholder="A cada X dias">
-        <input id="taskMonthlyDay" type="number" min="1" max="31" value="1" placeholder="Dia do mês">
+        <label class="field-label repeat-field repeat-daily">Repetir a cada X dias</label>
+        <input id="taskInterval" class="repeat-field repeat-daily" type="number" min="1" value="1" placeholder="A cada X dias">
+        <label class="field-label repeat-field repeat-monthly">Dia do mês</label>
+        <input id="taskMonthlyDay" class="repeat-field repeat-monthly" type="number" min="1" max="31" value="1" placeholder="Dia do mês">
+        <label class="field-label">Notificações</label>
         <select id="taskNotify">
           <option value="true">Notificar automaticamente</option>
-          <option value="false">Não notificar</option>
+          <option value="false">Não notificar esta missão</option>
         </select>
+        <label class="field-label">Dependência</label>
         <select id="taskParent">
-          <option value="">Sem missão anterior</option>
+          <option value="">Aparece normalmente</option>
         </select>
-        <div id="weekdayBox" class="weekday-box"></div>
+        <div id="weekdayBox" class="weekday-box repeat-field repeat-weekly"></div>
         <button id="saveTaskBtn">Salvar missão</button>
       </div>
     </div>
@@ -224,9 +225,7 @@
     <div class="modal">
       <div class="modal-head"><h2>🔔 Central da Base</h2><button class="close" id="closeNotifyBtn">✕</button></div>
       <div class="notify-actions">
-        <button class="small" id="enablePushBtn">Ativar push real</button>
-        <button class="ghost small" id="testLocalNotify">Teste local</button>
-        <button class="ghost small" id="testServerPush">Teste servidor</button>
+        <button class="small" id="enablePushBtn">Ativar notificações neste aparelho</button>
       </div>
       <div id="pushStatus" class="empty"></div>
       <div id="smartNotifications" class="list"></div>

@@ -1,4 +1,4 @@
-const CACHE_NAME='base-da-familia-v8-core-limpo';
+const CACHE_NAME='base-da-familia-v8-1-oficial';
 const FILES=['./','index.html','style.css','app.js','manifest.json','icon-192.png','icon-512.png','OneSignalSDKWorker.js'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE_NAME).then(c=>c.addAll(FILES)));self.skipWaiting();});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))));self.clients.claim();});

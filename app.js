@@ -38,7 +38,7 @@ function migrate(){
     if(!t.system)t.system=t.category||"casa";
     if(t.system==="undefined")t.system="casa";
     if(!systemKeys.includes(t.system))t.system="casa";
-    if(!t.assignedTo)t.assignedTo=t.person||"Ambos";
+    if(!t.assignedTo)t.assignedTo="Qualquer um";
     if(!t.scheduleType)t.scheduleType=t.frequency==="semanal"?"weekly":t.frequency==="mensal"?"monthly":"daily";
     if(!t.startDate)t.startDate=todayKey();
     if(!t.createdAt)t.createdAt=new Date().toISOString();
@@ -160,7 +160,7 @@ function nextInstance(type=null){
 }
 function labelDate(key){if(key===todayKey())return"Hoje";if(key<todayKey())return"Atrasada";const d=parseDate(key);return`${weekNames[d.getDay()]} ${d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}`}
 function tagHtml(t,dueDate){
-  return`<div class="meta"><span class="tag">${sysIcon(t.system)} ${sysLabel(t.system)}</span><span class="tag">Resp. ${t.assignedTo}</span><span class="tag">${t.estimatedMinutes||5} min</span><span class="tag">${calcXp(t)} XP</span><span class="tag">${energyFor(t)} energia</span><span class="tag">${labelDate(dueDate)}</span>${t.priority==="emergencial"?'<span class="tag">⚠️ emergencial</span>':""}</div>`;
+  return`<div class="meta"><span class="tag">${sysIcon(t.system)} ${sysLabel(t.system)}</span><span class="tag">Qualquer um pode fazer</span><span class="tag">${t.estimatedMinutes||5} min</span><span class="tag">${calcXp(t)} XP</span><span class="tag">${energyFor(t)} energia</span><span class="tag">${labelDate(dueDate)}</span>${t.priority==="emergencial"?'<span class="tag">⚠️ emergencial</span>':""}</div>`;
 }
 function missionCard(i){
   const t=i.task,who=completionFor(t.id,i.dueDate)?.completedBy;
@@ -243,20 +243,28 @@ function renderMissionWeekly(){const base=parseDate(todayKey()),monday=addDays(b
 function renderMissionMonthly(){const items=getInstances(0,45).filter(i=>i.task.scheduleType==="monthly"&&!i.done).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));$("missionView").innerHTML=`${noticesHtml()}<div class="card"><div class="view-head"><h2>Mensais</h2><button class="small" onclick="openTaskModal('monthly')">+ Nova mensal</button></div><div id="monthlyList" class="month-list"></div></div>`;const list=$("monthlyList");if(!items.length)list.innerHTML=`<div class="empty">Nenhuma mensal próxima.</div>`;items.forEach(i=>list.appendChild(missionCard(i)))}
 function fillParentOptions(currentId=""){
   const sel=$("taskParent");sel.innerHTML='<option value="">Sem missão anterior</option>';
-  state.tasks.filter(t=>t.id!==currentId).forEach(t=>{const o=document.createElement("option");o.value=t.id;o.textContent=`Depois de: ${t.text}`;sel.appendChild(o)});
+  state.tasks.filter(t=>t.id!==currentId).forEach(t=>{const o=document.createElement("option");o.value=t.id;o.textContent=`Só liberar depois de: ${t.text}`;sel.appendChild(o)});
 }
+
+function updateRepeatFields(type){
+  document.querySelectorAll(".repeat-field").forEach(el=>el.classList.add("hidden"));
+  if(type==="daily")document.querySelectorAll(".repeat-daily").forEach(el=>el.classList.remove("hidden"));
+  if(type==="weekly")document.querySelectorAll(".repeat-weekly").forEach(el=>el.classList.remove("hidden"));
+  if(type==="monthly")document.querySelectorAll(".repeat-monthly").forEach(el=>el.classList.remove("hidden"));
+}
+
 function openTaskModal(type,taskId=null){
   taskModalType=type;editingTaskId=taskId;const t=taskId?state.tasks.find(x=>x.id===taskId):null;
   $("taskModalTitle").textContent=t?"Editar missão":type==="daily"?"Nova diária":type==="weekly"?"Nova semanal":"Nova mensal";
-  $("taskText").value=t?.text||"";$("taskSystem").value=t?.system||"casa";$("taskAssigned").value=t?.assignedTo||activeProfile||"Ambos";$("taskDifficulty").value=t?.difficulty||"facil";$("taskPriority").value=t?.priority||"normal";$("taskMinutes").value=t?.estimatedMinutes||5;$("taskPreferredTime").value=t?.preferredTime||"";$("taskInterval").value=t?.interval||1;$("taskMonthlyDay").value=t?.monthlyDay||1;$("taskNotify").value=String(t?.notify!==false);
+  $("taskText").value=t?.text||"";$("taskSystem").value=t?.system||"casa";$("taskDifficulty").value=t?.difficulty||"facil";$("taskPriority").value=t?.priority||"normal";$("taskMinutes").value=t?.estimatedMinutes||5;$("taskPreferredTime").value=t?.preferredTime||"";$("taskInterval").value=t?.interval||1;$("taskMonthlyDay").value=t?.monthlyDay||1;$("taskNotify").value=String(t?.notify!==false);
   fillParentOptions(t?.id||"");$("taskParent").value=t?.parentTaskId||"";
-  $("taskInterval").style.display=type==="daily"?"block":"none";$("taskMonthlyDay").style.display=type==="monthly"?"block":"none";$("weekdayBox").style.display=type==="weekly"?"flex":"none";
+  updateRepeatFields(type);
   $("weekdayBox").innerHTML=[0,1,2,3,4,5,6].map(d=>`<button type="button" class="weekday ${(t?.weeklyDays||[]).includes(d)?"active":""}" data-day="${d}">${weekNames[d]}</button>`).join("");
   document.querySelectorAll(".weekday").forEach(b=>b.onclick=()=>b.classList.toggle("active"));$("taskModal").classList.add("open");
 }
 function saveTask(){
   const text=$("taskText").value.trim();if(!text)return alert("Digite o nome.");
-  const data={text,system:$("taskSystem").value,assignedTo:$("taskAssigned").value,difficulty:$("taskDifficulty").value,priority:$("taskPriority").value,estimatedMinutes:Number($("taskMinutes").value||5),preferredTime:$("taskPreferredTime").value||"",scheduleType:taskModalType,interval:Number($("taskInterval").value||1),monthlyDay:Number($("taskMonthlyDay").value||1),weeklyDays:[...document.querySelectorAll(".weekday.active")].map(b=>Number(b.dataset.day)),notify:$("taskNotify").value==="true",parentTaskId:$("taskParent").value||"",active:true};
+  const data={text,system:$("taskSystem").value,assignedTo:"Qualquer um",difficulty:$("taskDifficulty").value,priority:$("taskPriority").value,estimatedMinutes:Number($("taskMinutes").value||5),preferredTime:$("taskPreferredTime").value||"",scheduleType:taskModalType,interval:Number($("taskInterval").value||1),monthlyDay:Number($("taskMonthlyDay").value||1),weeklyDays:[...document.querySelectorAll(".weekday.active")].map(b=>Number(b.dataset.day)),notify:$("taskNotify").value==="true",parentTaskId:$("taskParent").value||"",active:true};
   if(taskModalType==="weekly"&&!data.weeklyDays.length)return alert("Escolha ao menos um dia.");
   if(editingTaskId)Object.assign(state.tasks.find(x=>x.id===editingTaskId),data);else state.tasks.push({...data,id:uid(),startDate:todayKey(),createdAt:new Date().toISOString()});
   $("taskModal").classList.remove("open");render();
@@ -310,27 +318,52 @@ function renderHistory(){
 }
 function renderNotifyModal(){
   $("smartNotifications").innerHTML=smartNotices().map(n=>`<div class="notice ${n.type}"><div class="notice-icon">${n.icon}</div><div><strong>${n.title}</strong><p>${n.text}</p></div></div>`).join("");
-  $("pushStatus").textContent="Push real pronto. Este aparelho precisa ativar e permitir notificações.";
+  let status="Este aparelho ainda não confirmou permissão de notificação.";
+  if("Notification" in window){
+    if(Notification.permission==="granted")status=`<strong>Notificações ativas</strong><br>Este aparelho recebe avisos do perfil ${activeProfile||"não escolhido"}.`;
+    if(Notification.permission==="denied")status=`<strong>Notificações bloqueadas</strong><br>Ative manualmente nas permissões do navegador.`;
+    if(Notification.permission==="default")status=`<strong>Permissão pendente</strong><br>O app vai pedir permissão para enviar avisos.`;
+  }
+  $("pushStatus").innerHTML=status;
 }
 async function enablePush(){
-  window.OneSignalDeferred=window.OneSignalDeferred||[];
-  window.OneSignalDeferred.push(async function(OneSignal){
-    await OneSignal.init({appId:CONFIG.ONESIGNAL_APP_ID,serviceWorkerPath:"OneSignalSDKWorker.js"});
-    await OneSignal.User.addTag("profile",activeProfile||"sem_perfil");
-    await OneSignal.Notifications.requestPermission();
-    alert("Push ativado neste aparelho para o perfil "+(activeProfile||"sem perfil")+".");
-  });
+  await autoEnablePush(true);
+}
+async function autoEnablePush(force=false){
+  if(!activeProfile)return;
+  if(!force && localStorage.getItem("bf_push_prompted_"+activeProfile)==="yes")return;
+  if(!("Notification" in window))return;
+  try{
+    window.OneSignalDeferred=window.OneSignalDeferred||[];
+    window.OneSignalDeferred.push(async function(OneSignal){
+      await OneSignal.init({appId:CONFIG.ONESIGNAL_APP_ID,serviceWorkerPath:"OneSignalSDKWorker.js"});
+      await OneSignal.User.addTag("profile",activeProfile);
+      if(force || Notification.permission==="default"){
+        await OneSignal.Notifications.requestPermission();
+      }
+      localStorage.setItem("bf_push_prompted_"+activeProfile,"yes");
+      renderNotifyModal();
+    });
+  }catch(e){
+    console.error(e);
+  }
 }
 function browserNotify(title,body){if("Notification"in window&&Notification.permission==="granted")new Notification(title,{body,icon:"icon-192.png"})}
 function requestLocalNotifications(){if(!("Notification"in window))return alert("Sem suporte.");Notification.requestPermission().then(p=>{if(p==="granted")browserNotify("🔔 Base da Família","Teste local funcionando.");else alert("Permissão negada.")})}
 async function testServerPush(){const r=await fetch("/.netlify/functions/send-push",{method:"POST"});const text=await r.text();alert(r.ok?"Push servidor enviado.":"Erro no push servidor: "+text.slice(0,180))}
 function maybeLocalCompletionNotify(){const st=dayStats(todayKey());if(st.totalDue>0&&st.done===st.totalDue)browserNotify("⭐ Dia Perfeito","Todas as missões de hoje foram concluídas.");else if(st.totalDue>0&&st.done===st.totalDue-1)browserNotify("Quase lá","Falta só uma missão para o Dia Perfeito.")}
 function render(sync=true){renderMissions();renderBase();renderGoals();renderHall();renderHistory();renderNotifyModal();$("activeProfilePill").textContent=activeProfile?`👤 ${activeProfile}`:"sem perfil";save(sync)}
-function setProfile(p){activeProfile=p;localStorage.setItem("bf_active_profile",p);$("profileGate").classList.add("hidden");render(false)}
+function setProfile(p){
+  activeProfile=p;
+  localStorage.setItem("bf_active_profile",p);
+  $("profileGate").classList.add("hidden");
+  render(false);
+  setTimeout(()=>autoEnablePush(),800);
+}
 function setup(){
   const theme=localStorage.getItem("bf_theme")||"dark";document.documentElement.dataset.theme=theme;$("themeToggle").textContent=theme==="dark"?"☀️ Tema":"🌙 Tema";
   $("themeToggle").onclick=()=>{const n=document.documentElement.dataset.theme==="dark"?"light":"dark";document.documentElement.dataset.theme=n;localStorage.setItem("bf_theme",n);$("themeToggle").textContent=n==="dark"?"☀️ Tema":"🌙 Tema"};
-  document.querySelectorAll(".profile-choice").forEach(b=>b.onclick=()=>setProfile(b.dataset.profile));if(activeProfile)$("profileGate").classList.add("hidden");
+  document.querySelectorAll(".profile-choice").forEach(b=>b.onclick=()=>setProfile(b.dataset.profile));if(activeProfile){$("profileGate").classList.add("hidden");setTimeout(()=>autoEnablePush(),1200)}
   $("switchProfileBtn").onclick=()=>{$("profileGate").classList.remove("hidden")};
   document.querySelectorAll(".nav-btn").forEach(b=>b.onclick=()=>{document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));$("screen-"+b.dataset.screen).classList.add("active");document.querySelectorAll(".nav-btn").forEach(x=>x.classList.remove("active"));b.classList.add("active")});
   document.querySelectorAll(".mission-tab").forEach(b=>b.onclick=()=>{missionView=b.dataset.missionView;renderMissions()});
@@ -338,6 +371,6 @@ function setup(){
   $("openGoalBtn").onclick=()=>$("goalModal").classList.add("open");$("closeGoalBtn").onclick=()=>$("goalModal").classList.remove("open");$("saveGoalBtn").onclick=addGoal;
   $("prevMonthBtn").onclick=()=>{calendarMonth.setMonth(calendarMonth.getMonth()-1);render(false)};$("nextMonthBtn").onclick=()=>{calendarMonth.setMonth(calendarMonth.getMonth()+1);render(false)};
   $("notifyBtn").onclick=()=>{$("notifyModal").classList.add("open");renderNotifyModal()};$("closeNotifyBtn").onclick=()=>$("notifyModal").classList.remove("open");
-  $("enablePushBtn").onclick=enablePush;$("testLocalNotify").onclick=requestLocalNotifications;$("testServerPush").onclick=testServerPush;
+  $("enablePushBtn").onclick=enablePush;
 }
 migrate();setup();if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});render(false);initSupabase().then(()=>render(false));
