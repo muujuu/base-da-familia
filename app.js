@@ -93,12 +93,19 @@ function calcXp(t){
   return Math.round(base*tm*fm*pm*am);
 }
 function energyFor(t){return Math.max(1,Math.round(calcXp(t)/10))}
+
+function isTaskBlocked(task){
+  return !!(task.parentTaskId && !hasEverDone(task.parentTaskId));
+}
 function dueOnDate(t,date){
   if(t.active===false)return false;
   if(t.priority==="emergencial")return !isTaskDoneForDate(t.id,dateKey(date));
   const key=dateKey(date),start=parseDate(t.startDate||dateKey(new Date(t.createdAt||Date.now())));
   if(key<dateKey(start))return false;
-  if(t.parentTaskId&&!hasEverDone(t.parentTaskId))return false;
+  // Missões dependentes continuam aparecendo no planner.
+  // A dependência apenas bloqueia a conclusão.
+  // Não escondemos a missão.
+
   if(t.scheduleType==="daily"){
     const days=Math.floor((parseDate(key)-start)/86400000);
     return days%Number(t.interval||1)===0;
