@@ -22,6 +22,7 @@ let state={
   goals:JSON.parse(localStorage.getItem("bf_goals")||"[]"),
   daySnapshots:JSON.parse(localStorage.getItem("bf_day_snapshots")||"{}"),
   notificationLog:JSON.parse(localStorage.getItem("bf_notification_log")||"{}"),
+  waste:JSON.parse(localStorage.getItem("bf_waste")||"[]"),
   settings:JSON.parse(localStorage.getItem("bf_settings")||"{}")
 };
 function $(id){return document.getElementById(id)}
@@ -32,7 +33,7 @@ function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
 function todayKey(){return dateKey(new Date())}
 function money(v){return Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
 function sysIcon(k){return systems[k]?.[0]||"🎯"}function sysLabel(k){return systems[k]?.[1]||k}
-function localSave(){localStorage.setItem("bf_tasks",JSON.stringify(state.tasks));localStorage.setItem("bf_completions",JSON.stringify(state.completions));localStorage.setItem("bf_goals",JSON.stringify(state.goals));localStorage.setItem("bf_day_snapshots",JSON.stringify(state.daySnapshots));localStorage.setItem("bf_notification_log",JSON.stringify(state.notificationLog));localStorage.setItem("bf_settings",JSON.stringify(state.settings))}
+function localSave(){localStorage.setItem("bf_tasks",JSON.stringify(state.tasks));localStorage.setItem("bf_completions",JSON.stringify(state.completions));localStorage.setItem("bf_goals",JSON.stringify(state.goals));localStorage.setItem("bf_day_snapshots",JSON.stringify(state.daySnapshots));localStorage.setItem("bf_notification_log",JSON.stringify(state.notificationLog));localStorage.setItem("bf_waste",JSON.stringify(state.waste||[]));localStorage.setItem("bf_settings",JSON.stringify(state.settings))}
 function migrate(){
   state.tasks.forEach(t=>{
     if(!t.system)t.system=t.category||"casa";
@@ -57,7 +58,7 @@ function migrate(){
 function setSync(type,text){$("syncDot").className="dot "+type;$("syncText").textContent=text}
 function applyData(data){
   state.version=8;state.tasks=data.tasks||[];state.completions=data.completions||[];state.goals=data.goals||[];
-  state.daySnapshots=data.daySnapshots||{};state.notificationLog=data.notificationLog||{};state.settings=data.settings||state.settings||{};
+  state.daySnapshots=data.daySnapshots||{};state.notificationLog=data.notificationLog||{};state.waste=data.waste||state.waste||[];state.settings=data.settings||state.settings||{};
   migrate();
 }
 async function initSupabase(){
@@ -93,19 +94,12 @@ function calcXp(t){
   return Math.round(base*tm*fm*pm*am);
 }
 function energyFor(t){return Math.max(1,Math.round(calcXp(t)/10))}
-
-function isTaskBlocked(task){
-  return !!(task.parentTaskId && !hasEverDone(task.parentTaskId));
-}
 function dueOnDate(t,date){
   if(t.active===false)return false;
   if(t.priority==="emergencial")return !isTaskDoneForDate(t.id,dateKey(date));
   const key=dateKey(date),start=parseDate(t.startDate||dateKey(new Date(t.createdAt||Date.now())));
   if(key<dateKey(start))return false;
-  // Missões dependentes continuam aparecendo no planner.
-  // A dependência apenas bloqueia a conclusão.
-  // Não escondemos a missão.
-
+  // Dependência não esconde a missão no planner; apenas bloqueia o botão de concluir.
   if(t.scheduleType==="daily"){
     const days=Math.floor((parseDate(key)-start)/86400000);
     return days%Number(t.interval||1)===0;
@@ -125,12 +119,31 @@ function isTaskDoneForDate(taskId,key){
   });
 }
 function completionFor(taskId,key){return state.completions.find(c=>c.taskId===taskId&&(c.dueDate===key||(c.completedAt&&dateKey(new Date(c.completedAt))===key)))}
+function parentTaskName(parentId){
+  const parent=state.tasks.find(t=>t.id===parentId);
+  return parent?parent.text:"missão anterior";
+}
+function isParentDoneForOccurrence(task,dueDate){
+  if(!task.parentTaskId)return true;
+  // Dependência por ocorrência: para concluir a missão de uma data,
+  // a missão anterior precisa estar feita naquela mesma data.
+  return isTaskDoneForDate(task.parentTaskId,dueDate);
+}
+function getMissionStatus(task,dueDate){
+  if(isTaskDoneForDate(task.id,dueDate))return{key:"done",icon:"✅",label:"Concluída",canComplete:false};
+  if(dueDate>todayKey())return{key:"scheduled",icon:"⏳",label:"Agendada",canComplete:false,detail:`Disponível em ${labelDate(dueDate)}`};
+  if(!isParentDoneForOccurrence(task,dueDate))return{key:"locked",icon:"🔒",label:"Bloqueada",canComplete:false,detail:`Aguardando: ${parentTaskName(task.parentTaskId)}`};
+  if(dueDate<todayKey())return{key:"late",icon:"⚠️",label:"Atrasada",canComplete:true};
+  return{key:"available",icon:"🔓",label:"Disponível",canComplete:true};
+}
 function makeCompletion(t,dueDate){
   return{id:uid(),taskId:t.id,taskText:t.text,system:t.system,assignedTo:t.assignedTo,completedBy:activeProfile||"Mu",xp:calcXp(t),energy:energyFor(t),dueDate,completedAt:new Date().toISOString()};
 }
 function completeTask(taskId,dueDate){
   const t=state.tasks.find(x=>x.id===taskId);
   if(!t||isTaskDoneForDate(taskId,dueDate))return;
+  const status=getMissionStatus(t,dueDate);
+  if(!status.canComplete)return;
   state.completions.push(makeCompletion(t,dueDate));
   snapshot(dueDate); if(dueDate!==todayKey())snapshot(todayKey());
   save(true); maybeLocalCompletionNotify(); render();
@@ -155,12 +168,15 @@ function getInstances(from=-14,to=45){
   const arr=[],base=parseDate(todayKey());
   for(let i=from;i<=to;i++){
     const d=addDays(base,i),key=dateKey(d);
-    dueTasks(key).forEach(t=>arr.push({task:t,dueDate:key,date:d,done:isTaskDoneForDate(t.id,key),late:key<todayKey()&&!isTaskDoneForDate(t.id,key)}));
+    dueTasks(key).forEach(t=>{const done=isTaskDoneForDate(t.id,key);const parentOk=isParentDoneForOccurrence(t,key);arr.push({task:t,dueDate:key,date:d,done,late:key<todayKey()&&!done&&parentOk,blocked:!done&&!parentOk});});
   }
   return arr;
 }
 function nextInstance(type=null){
   return getInstances(0,60).filter(i=>!i.done&&(!type||i.task.scheduleType===type)).sort((a,b)=>{
+    const sa=getMissionStatus(a.task,a.dueDate),sb=getMissionStatus(b.task,b.dueDate);
+    const order={available:0,late:1,locked:2,scheduled:3,done:4};
+    if(order[sa.key]!==order[sb.key])return order[sa.key]-order[sb.key];
     if(priorityScore[b.task.priority]!==priorityScore[a.task.priority])return priorityScore[b.task.priority]-priorityScore[a.task.priority];
     return a.dueDate.localeCompare(b.dueDate)||calcXp(b.task)-calcXp(a.task);
   })[0];
@@ -170,9 +186,14 @@ function tagHtml(t,dueDate){
   return`<div class="meta"><span class="tag">${sysIcon(t.system)} ${sysLabel(t.system)}</span><span class="tag">Qualquer um pode fazer</span><span class="tag">${t.estimatedMinutes||5} min</span><span class="tag">${calcXp(t)} XP</span><span class="tag">${energyFor(t)} energia</span><span class="tag">${labelDate(dueDate)}</span>${t.priority==="emergencial"?'<span class="tag">⚠️ emergencial</span>':""}</div>`;
 }
 function missionCard(i){
-  const t=i.task,who=completionFor(t.id,i.dueDate)?.completedBy;
-  const el=document.createElement("div");el.className="mission-card";
-  el.innerHTML=`<div><div class="mission-title">${sysIcon(t.system)} ${t.text}</div>${tagHtml(t,i.dueDate)}${who?`<p>Feita por ${who}</p>`:""}</div><div class="actions">${i.done?`<button class="ghost small" onclick="undoTask('${t.id}','${i.dueDate}')">Desfazer</button>`:`<button class="green small" onclick="completeTask('${t.id}','${i.dueDate}')">Feita</button>`}<button class="small" onclick="openTaskModal('${t.scheduleType}','${t.id}')">Editar</button></div>`;
+  const t=i.task,who=completionFor(t.id,i.dueDate)?.completedBy,status=getMissionStatus(t,i.dueDate);
+  const el=document.createElement("div");
+  el.className="mission-card "+status.key;
+  const statusLine=status.detail?`<div class="status-line ${status.key}">${status.icon} ${status.label} • ${status.detail}</div>`:`<div class="status-line ${status.key}">${status.icon} ${status.label}</div>`;
+  const action=status.key==="done"
+    ? `<button class="ghost small" onclick="undoTask('${t.id}','${i.dueDate}')">Desfazer</button>`
+    : `<button class="green small" ${status.canComplete?"":"disabled"} onclick="${status.canComplete?`completeTask('${t.id}','${i.dueDate}')`:""}">Feita</button>`;
+  el.innerHTML=`<div><div class="mission-title">${sysIcon(t.system)} ${t.text}</div>${tagHtml(t,i.dueDate)}${statusLine}${who?`<p>Feita por ${who}</p>`:""}</div><div class="actions">${action}<button class="small" onclick="openTaskModal('${t.scheduleType}','${t.id}')">Editar</button></div>`;
   return el;
 }
 function competition(){
@@ -236,17 +257,19 @@ function renderMissions(){
   if(missionView==="base")renderMissionBase();if(missionView==="daily")renderMissionDaily();if(missionView==="weekly")renderMissionWeekly();if(missionView==="monthly")renderMissionMonthly();
 }
 function renderMissionBase(){
-  const general=nextInstance(),daily=nextInstance("daily"),weekly=nextInstance("weekly"),monthly=nextInstance("monthly"),late=getInstances(-30,-1).filter(i=>i.late),st=dayStats(todayKey());
-  $("missionView").innerHTML=`${noticesHtml()}<div class="mission-lobby"><div class="card"><div class="section-head"><h2>Próxima</h2></div><div id="generalNext"></div></div><div class="card"><div class="section-head"><h2>Base hoje</h2></div><div class="stats-grid"><div class="stat"><strong>${st.done}/${st.totalDue}</strong><span>feitas</span></div><div class="stat"><strong>${st.percent}%</strong><span>progresso</span></div><div class="stat"><strong>${st.perfect?"⭐":"—"}</strong><span>dia perfeito</span></div></div></div></div><div class="card"><div class="panel-grid"><div class="panel"><div class="panel-title">☀️ Diária</div><div id="nextDaily"></div></div><div class="panel"><div class="panel-title">📆 Semanal</div><div id="nextWeekly"></div></div><div class="panel"><div class="panel-title">🗓️ Mensal</div><div id="nextMonthly"></div></div></div></div><div class="card"><div class="section-head"><h2>Atrasadas</h2><span class="pill">${late.length}</span></div><div id="lateList" class="mission-list"></div></div>`;
+  const general=nextInstance(),daily=nextInstance("daily"),weekly=nextInstance("weekly"),monthly=nextInstance("monthly"),late=getInstances(-30,-1).filter(i=>i.late),blockedToday=getInstances(0,0).filter(i=>getMissionStatus(i.task,i.dueDate).key==="locked").length,st=dayStats(todayKey());
+  $("missionView").innerHTML=`${noticesHtml()}<div class="mission-lobby"><div class="card"><div class="section-head"><h2>Próxima</h2></div><div id="generalNext"></div></div><div class="card"><div class="section-head"><h2>Base hoje</h2></div><div class="stats-grid"><div class="stat"><strong>${st.done}/${st.totalDue}</strong><span>feitas</span></div><div class="stat"><strong>${st.percent}%</strong><span>progresso</span></div><div class="stat"><strong>${blockedToday}</strong><span>bloqueadas</span></div><div class="stat"><strong>${st.perfect?"⭐":"—"}</strong><span>dia perfeito</span></div></div></div></div><div class="card"><div class="panel-grid"><div class="panel"><div class="panel-title">☀️ Diária</div><div id="nextDaily"></div></div><div class="panel"><div class="panel-title">📆 Semanal</div><div id="nextWeekly"></div></div><div class="panel"><div class="panel-title">🗓️ Mensal</div><div id="nextMonthly"></div></div></div></div><div class="card"><div class="section-head"><h2>Atrasadas</h2><span class="pill">${late.length}</span></div><div id="lateList" class="mission-list"></div></div>`;
   renderMini("generalNext",general,true);renderMini("nextDaily",daily);renderMini("nextWeekly",weekly);renderMini("nextMonthly",monthly);
   const lateList=$("lateList");if(!late.length)lateList.innerHTML=`<div class="empty">Nenhuma atrasada.</div>`;late.slice(0,8).forEach(i=>lateList.appendChild(missionCard(i)));
 }
 function renderMini(id,i,big=false){
   const box=$(id);if(!i){box.innerHTML=`<div class="empty">Nada pendente.</div>`;return}
-  const t=i.task;box.innerHTML=`<div class="${big?'panel big':''}"><div class="mission-title">${sysIcon(t.system)} ${t.text}</div>${tagHtml(t,i.dueDate)}<div class="actions"><button class="green small" onclick="completeTask('${t.id}','${i.dueDate}')">Feita</button><button class="small" onclick="missionView='${t.scheduleType}';renderMissions()">Ver</button></div></div>`;
+  const t=i.task,status=getMissionStatus(t,i.dueDate);
+  const statusLine=status.detail?`<div class="status-line ${status.key}">${status.icon} ${status.label} • ${status.detail}</div>`:`<div class="status-line ${status.key}">${status.icon} ${status.label}</div>`;
+  box.innerHTML=`<div class="${big?'panel big':''}"><div class="mission-title">${sysIcon(t.system)} ${t.text}</div>${tagHtml(t,i.dueDate)}${statusLine}<div class="actions"><button class="green small" ${status.canComplete?"":"disabled"} onclick="${status.canComplete?`completeTask('${t.id}','${i.dueDate}')`:""}">Feita</button><button class="small" onclick="missionView='${t.scheduleType}';renderMissions()">Ver</button></div></div>`;
 }
 function renderMissionDaily(){const today=getInstances(0,0).filter(i=>i.task.scheduleType==="daily"||i.task.priority==="emergencial");$("missionView").innerHTML=`${noticesHtml()}<div class="card"><div class="view-head"><h2>Diárias</h2><button class="small" onclick="openTaskModal('daily')">+ Nova diária</button></div><div id="dailyList" class="mission-list"></div></div>`;const list=$("dailyList");if(!today.length)list.innerHTML=`<div class="empty">Nenhuma diária para hoje.</div>`;today.forEach(i=>list.appendChild(missionCard(i)))}
-function renderMissionWeekly(){const base=parseDate(todayKey()),monday=addDays(base,-((base.getDay()+6)%7));$("missionView").innerHTML=`${noticesHtml()}<div class="card"><div class="view-head"><h2>Semanais</h2><button class="small" onclick="openTaskModal('weekly')">+ Nova semanal</button></div><div class="week-board" id="weekBoard"></div></div>`;const board=$("weekBoard");for(let i=0;i<7;i++){const d=addDays(monday,i),key=dateKey(d),items=getInstances(0,7).filter(x=>x.dueDate===key&&x.task.scheduleType==="weekly"),col=document.createElement("div");col.className="week-day";col.innerHTML=`<strong>${weekFull[d.getDay()]}</strong><div class="mission-list"></div>`;const list=col.querySelector(".mission-list");if(!items.length)list.innerHTML=`<div class="empty">—</div>`;items.forEach(inst=>list.appendChild(missionCard(inst)));board.appendChild(col)}}
+function renderMissionWeekly(){const base=parseDate(todayKey()),monday=addDays(base,-((base.getDay()+6)%7));$("missionView").innerHTML=`${noticesHtml()}<div class="card"><div class="view-head"><h2>Semanais</h2><button class="small" onclick="openTaskModal('weekly')">+ Nova semanal</button></div><div class="week-board" id="weekBoard"></div></div>`;const board=$("weekBoard");for(let i=0;i<7;i++){const d=addDays(monday,i),key=dateKey(d),items=dueTasks(key).filter(t=>t.scheduleType==="weekly").map(t=>({task:t,dueDate:key,date:d,done:isTaskDoneForDate(t.id,key),late:key<todayKey()&&!isTaskDoneForDate(t.id,key)&&isParentDoneForOccurrence(t,key),blocked:!isTaskDoneForDate(t.id,key)&&!isParentDoneForOccurrence(t,key)})),col=document.createElement("div");col.className="week-day";col.innerHTML=`<strong>${weekFull[d.getDay()]}</strong><div class="mission-list"></div>`;const list=col.querySelector(".mission-list");if(!items.length)list.innerHTML=`<div class="empty">—</div>`;items.forEach(inst=>list.appendChild(missionCard(inst)));board.appendChild(col)}}
 function renderMissionMonthly(){const items=getInstances(0,45).filter(i=>i.task.scheduleType==="monthly"&&!i.done).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));$("missionView").innerHTML=`${noticesHtml()}<div class="card"><div class="view-head"><h2>Mensais</h2><button class="small" onclick="openTaskModal('monthly')">+ Nova mensal</button></div><div id="monthlyList" class="month-list"></div></div>`;const list=$("monthlyList");if(!items.length)list.innerHTML=`<div class="empty">Nenhuma mensal próxima.</div>`;items.forEach(i=>list.appendChild(missionCard(i)))}
 function fillParentOptions(currentId=""){
   const sel=$("taskParent");sel.innerHTML='<option value="">Sem missão anterior</option>';
@@ -298,6 +321,42 @@ function renderCompetition(){
   const c=competition(),viewer=activeProfile,other=viewer==="Mu"?"Ju":"Mu";
   $("competitionBox").innerHTML=`<div class="notice personal"><div class="notice-icon">🏁</div><div><strong>${c.leaderXp.name} lidera no XP</strong><p>Diferença: ${Math.round(c.diffXp)} XP.</p></div></div><div class="notice tip"><div class="notice-icon">📊</div><div><strong>${c.behindTasks.name} fez menos missões</strong><p>Diferença: ${c.diffTasks} missões.</p></div></div>${viewer?`<div class="notice ${c.behindXp.name===viewer?'danger':'good'}"><div class="notice-icon">${c.behindXp.name===viewer?'⚡':'🔥'}</div><div><strong>${c.behindXp.name===viewer?'Você pode virar':'Você está na frente'}</strong><p>${c.behindXp.name===viewer?'Faça uma missão rápida para encostar.':'Mantenha a sequência para não perder a liderança.'}</p></div></div>`:""}`;
 }
+
+function addWaste(){
+  const type=$("wasteType")?.value;
+  const amount=Number($("wasteAmount")?.value||0);
+  if(!type||!amount)return alert("Coloque um valor.");
+  state.waste=state.waste||[];
+  state.waste.push({id:uid(),type,amount,profile:activeProfile||"sem perfil",createdAt:new Date().toISOString()});
+  $("wasteAmount").value="";
+  render();
+}
+function deleteWaste(id){
+  state.waste=(state.waste||[]).filter(w=>w.id!==id);
+  render();
+}
+function renderWaste(){
+  if(!$("wasteStats"))return;
+  const now=new Date(),monthKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+  const rows=(state.waste||[]).filter(w=>(w.createdAt||"").slice(0,7)===monthKey);
+  const label={alcool:"🍻 Álcool",maconha:"🌿 Maconha",delivery:"🍔 Delivery"};
+  const total=rows.reduce((s,w)=>s+Number(w.amount||0),0);
+  $("wasteMonthTotal").textContent=`${money(total)} no mês`;
+  $("wasteStats").innerHTML=["alcool","maconha","delivery"].map(k=>{
+    const v=rows.filter(w=>w.type===k).reduce((s,w)=>s+Number(w.amount||0),0);
+    return `<div class="stat"><strong>${money(v)}</strong><span>${label[k]}</span></div>`;
+  }).join("");
+  const list=$("wasteList");
+  if(!rows.length){list.innerHTML=`<div class="empty">Nenhum gasto registrado este mês.</div>`;return}
+  list.innerHTML="";
+  rows.slice().sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0,30).forEach(w=>{
+    const e=document.createElement("div");
+    e.className="entry";
+    e.innerHTML=`<div><strong>${label[w.type]} • ${money(w.amount)}</strong><p>${w.profile||""} • ${new Date(w.createdAt).toLocaleString("pt-BR")}</p></div><button class="red small" onclick="deleteWaste('${w.id}')">X</button>`;
+    list.appendChild(e);
+  });
+}
+
 function renderGoals(){
   const saved=state.goals.reduce((s,g)=>s+Number(g.current||0),0),target=state.goals.reduce((s,g)=>s+Number(g.target||0),0);
   $("cofrinhoTotal").textContent=money(saved);$("cofrinhoMissing").textContent=money(Math.max(0,target-saved));$("cofrinhoCount").textContent=state.goals.length;$("goalList").innerHTML="";
@@ -359,7 +418,7 @@ function browserNotify(title,body){if("Notification"in window&&Notification.perm
 function requestLocalNotifications(){if(!("Notification"in window))return alert("Sem suporte.");Notification.requestPermission().then(p=>{if(p==="granted")browserNotify("🔔 Base da Família","Teste local funcionando.");else alert("Permissão negada.")})}
 async function testServerPush(){const r=await fetch("/.netlify/functions/send-push",{method:"POST"});const text=await r.text();alert(r.ok?"Push servidor enviado.":"Erro no push servidor: "+text.slice(0,180))}
 function maybeLocalCompletionNotify(){const st=dayStats(todayKey());if(st.totalDue>0&&st.done===st.totalDue)browserNotify("⭐ Dia Perfeito","Todas as missões de hoje foram concluídas.");else if(st.totalDue>0&&st.done===st.totalDue-1)browserNotify("Quase lá","Falta só uma missão para o Dia Perfeito.")}
-function render(sync=true){renderMissions();renderBase();renderGoals();renderHall();renderHistory();renderNotifyModal();$("activeProfilePill").textContent=activeProfile?`👤 ${activeProfile}`:"sem perfil";save(sync)}
+function render(sync=true){renderMissions();renderBase();renderGoals();renderWaste();renderHall();renderHistory();renderNotifyModal();$("activeProfilePill").textContent=activeProfile?`👤 ${activeProfile}`:"sem perfil";save(sync)}
 function setProfile(p){
   activeProfile=p;
   localStorage.setItem("bf_active_profile",p);
@@ -375,7 +434,7 @@ function setup(){
   document.querySelectorAll(".nav-btn").forEach(b=>b.onclick=()=>{document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));$("screen-"+b.dataset.screen).classList.add("active");document.querySelectorAll(".nav-btn").forEach(x=>x.classList.remove("active"));b.classList.add("active")});
   document.querySelectorAll(".mission-tab").forEach(b=>b.onclick=()=>{missionView=b.dataset.missionView;renderMissions()});
   $("saveTaskBtn").onclick=saveTask;$("closeTaskModal").onclick=()=>$("taskModal").classList.remove("open");
-  $("openGoalBtn").onclick=()=>$("goalModal").classList.add("open");$("closeGoalBtn").onclick=()=>$("goalModal").classList.remove("open");$("saveGoalBtn").onclick=addGoal;
+  $("openGoalBtn").onclick=()=>$("goalModal").classList.add("open");$("closeGoalBtn").onclick=()=>$("goalModal").classList.remove("open");$("saveGoalBtn").onclick=addGoal;if($("addWasteBtn"))$("addWasteBtn").onclick=addWaste;
   $("prevMonthBtn").onclick=()=>{calendarMonth.setMonth(calendarMonth.getMonth()-1);render(false)};$("nextMonthBtn").onclick=()=>{calendarMonth.setMonth(calendarMonth.getMonth()+1);render(false)};
   $("notifyBtn").onclick=()=>{$("notifyModal").classList.add("open");renderNotifyModal()};$("closeNotifyBtn").onclick=()=>$("notifyModal").classList.remove("open");
   $("enablePushBtn").onclick=enablePush;
