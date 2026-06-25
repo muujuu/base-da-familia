@@ -1,13 +1,15 @@
-# Base da Família V8.4 — Ordem inteligente + Cofrinho futilidades
+# Base da Família V8.6 — Fluidez
 
-Alterações:
-- Missões com dependência não somem mais.
-- Missões futuras aparecem como agendadas e não podem ser feitas antes do dia.
-- Missões bloqueadas aparecem com cadeado e mostram qual missão precisa ser feita antes.
-- Botão Feita fica desabilitado quando a missão está agendada ou bloqueada.
-- Dependência é por ocorrência/data: a missão de sábado depende da missão anterior de sábado.
-- Planner semanal mostra as ocorrências da semana, incluindo bloqueadas/agendadas.
-- Cofrinho ganhou seção: Álcool, maconha e delivery.
-- Essa seção registra gastos por tipo, perfil, data e total do mês.
+Adicionado:
+- Excluir missão.
+- Arquivar/Pausar missão.
+- Fiz ontem para missões diárias.
+- Filtro de missões: Todas, Disponíveis, Bloqueadas, Feitas.
+- Corrigir histórico duplicado na aba Histórico.
+- Imagens de perfil Mu/Ju com fallback para emoji se a imagem não carregar.
 
-Use esta como versão congelada de teste por algumas semanas.
+Mantido:
+- Lock por data.
+- Missões futuras agendadas.
+- Dependências visíveis e bloqueadas.
+- Cofrinho com Álcool, maconha e delivery.

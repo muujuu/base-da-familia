@@ -4,7 +4,7 @@ const CONFIG={
   ONESIGNAL_APP_ID:"d8f5cd74-b37b-441c-ab84-cce468a9d95d"
 };
 const FAMILY_ID="base-mu-ju-v8";
-let sb=null,remoteReady=false,savingRemote=false,missionView="base",taskModalType="daily",editingTaskId=null,calendarMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1),trophyFilter="Todas";
+let sb=null,remoteReady=false,savingRemote=false,missionView="base",missionStatusFilter="all",taskModalType="daily",editingTaskId=null,calendarMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1),trophyFilter="Todas";
 let activeProfile=localStorage.getItem("bf_active_profile")||"";
 const systems={
   pets:["🐾","Pets"],casa:["🏠","Casa"],financeiro:["💰","Financeiro"],relacionamento:["❤️","Relacionamento"],saude:["🧠","Saúde"]
@@ -34,6 +34,20 @@ function todayKey(){return dateKey(new Date())}
 function money(v){return Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
 function sysIcon(k){return systems[k]?.[0]||"🎯"}function sysLabel(k){return systems[k]?.[1]||k}
 function localSave(){localStorage.setItem("bf_tasks",JSON.stringify(state.tasks));localStorage.setItem("bf_completions",JSON.stringify(state.completions));localStorage.setItem("bf_goals",JSON.stringify(state.goals));localStorage.setItem("bf_day_snapshots",JSON.stringify(state.daySnapshots));localStorage.setItem("bf_notification_log",JSON.stringify(state.notificationLog));localStorage.setItem("bf_waste",JSON.stringify(state.waste||[]));localStorage.setItem("bf_settings",JSON.stringify(state.settings))}
+
+function dedupeCompletions(){
+  const seen=new Set(),clean=[];
+  state.completions.slice().sort((a,b)=>(a.completedAt||"").localeCompare(b.completedAt||"")).forEach(c=>{
+    const day=c.dueDate||(c.completedAt?dateKey(new Date(c.completedAt)):todayKey());
+    const key=`${c.taskId}|${day}`;
+    if(seen.has(key))return;
+    seen.add(key);
+    c.dueDate=day;
+    clean.push(c);
+  });
+  state.completions=clean;
+}
+
 function migrate(){
   state.tasks.forEach(t=>{
     if(!t.system)t.system=t.category||"casa";
@@ -47,12 +61,14 @@ function migrate(){
     if(!t.priority)t.priority="normal";
     if(t.notify===undefined)t.notify=true;
     if(t.active===undefined)t.active=true;
+    if(t.archived===undefined)t.archived=false;
     if(!t.estimatedMinutes)t.estimatedMinutes=Number(t.time||5);
     if(!t.weeklyDays)t.weeklyDays=t.scheduleType==="weekly"?[new Date().getDay()]:[];
     if(!t.monthlyDay)t.monthlyDay=new Date().getDate();
     if(!t.interval)t.interval=1;
   });
   state.completions.forEach(c=>{if(!c.completedBy)c.completedBy=c.person||activeProfile||"Mu";if(!c.system)c.system=c.category||"casa"});
+  dedupeCompletions();
   localSave();
 }
 function setSync(type,text){$("syncDot").className="dot "+type;$("syncText").textContent=text}
@@ -95,11 +111,11 @@ function calcXp(t){
 }
 function energyFor(t){return Math.max(1,Math.round(calcXp(t)/10))}
 function dueOnDate(t,date){
-  if(t.active===false)return false;
+  if(t.active===false||t.archived===true)return false;
   if(t.priority==="emergencial")return !isTaskDoneForDate(t.id,dateKey(date));
   const key=dateKey(date),start=parseDate(t.startDate||dateKey(new Date(t.createdAt||Date.now())));
   if(key<dateKey(start))return false;
-  // Dependência não esconde a missão no planner; apenas bloqueia o botão de concluir.
+  // Dependência não esconde a missão no planner; apenas bloqueia a conclusão.
   if(t.scheduleType==="daily"){
     const days=Math.floor((parseDate(key)-start)/86400000);
     return days%Number(t.interval||1)===0;
@@ -118,15 +134,17 @@ function isTaskDoneForDate(taskId,key){
     return false;
   });
 }
-function completionFor(taskId,key){return state.completions.find(c=>c.taskId===taskId&&(c.dueDate===key||(c.completedAt&&dateKey(new Date(c.completedAt))===key)))}
+function completionFor(taskId,key){
+  return state.completions.find(c=>c.taskId===taskId&&(c.dueDate===key||(c.completedAt&&dateKey(new Date(c.completedAt))===key)));
+}
 function parentTaskName(parentId){
   const parent=state.tasks.find(t=>t.id===parentId);
   return parent?parent.text:"missão anterior";
 }
 function isParentDoneForOccurrence(task,dueDate){
   if(!task.parentTaskId)return true;
-  // Dependência por ocorrência: para concluir a missão de uma data,
-  // a missão anterior precisa estar feita naquela mesma data.
+  // Dependência por ocorrência/data:
+  // para concluir a missão de uma data, a missão anterior precisa estar feita naquela mesma data.
   return isTaskDoneForDate(task.parentTaskId,dueDate);
 }
 function getMissionStatus(task,dueDate){
@@ -136,17 +154,17 @@ function getMissionStatus(task,dueDate){
   if(dueDate<todayKey())return{key:"late",icon:"⚠️",label:"Atrasada",canComplete:true};
   return{key:"available",icon:"🔓",label:"Disponível",canComplete:true};
 }
-function makeCompletion(t,dueDate){
-  return{id:uid(),taskId:t.id,taskText:t.text,system:t.system,assignedTo:t.assignedTo,completedBy:activeProfile||"Mu",xp:calcXp(t),energy:energyFor(t),dueDate,completedAt:new Date().toISOString()};
-}
 function completeTask(taskId,dueDate){
   const t=state.tasks.find(x=>x.id===taskId);
   if(!t||isTaskDoneForDate(taskId,dueDate))return;
   const status=getMissionStatus(t,dueDate);
   if(!status.canComplete)return;
   state.completions.push(makeCompletion(t,dueDate));
-  snapshot(dueDate); if(dueDate!==todayKey())snapshot(todayKey());
-  save(true); maybeLocalCompletionNotify(); render();
+  snapshot(dueDate);
+  if(dueDate!==todayKey())snapshot(todayKey());
+  save(true);
+  maybeLocalCompletionNotify();
+  render();
 }
 function undoTask(taskId,dueDate){
   state.completions=state.completions.filter(c=>!(c.taskId===taskId&&(c.dueDate===dueDate||(c.completedAt&&dateKey(new Date(c.completedAt))===dueDate))));
@@ -168,7 +186,19 @@ function getInstances(from=-14,to=45){
   const arr=[],base=parseDate(todayKey());
   for(let i=from;i<=to;i++){
     const d=addDays(base,i),key=dateKey(d);
-    dueTasks(key).forEach(t=>{const done=isTaskDoneForDate(t.id,key);const parentOk=isParentDoneForOccurrence(t,key);arr.push({task:t,dueDate:key,date:d,done,late:key<todayKey()&&!done&&parentOk,blocked:!done&&!parentOk});});
+    dueTasks(key).forEach(t=>{
+      const done=isTaskDoneForDate(t.id,key);
+      const parentOk=isParentDoneForOccurrence(t,key);
+      arr.push({
+        task:t,
+        dueDate:key,
+        date:d,
+        done,
+        scheduled:key>todayKey()&&!done,
+        blocked:!done&&key<=todayKey()&&!parentOk,
+        late:key<todayKey()&&!done&&parentOk
+      });
+    });
   }
   return arr;
 }
@@ -190,10 +220,16 @@ function missionCard(i){
   const el=document.createElement("div");
   el.className="mission-card "+status.key;
   const statusLine=status.detail?`<div class="status-line ${status.key}">${status.icon} ${status.label} • ${status.detail}</div>`:`<div class="status-line ${status.key}">${status.icon} ${status.label}</div>`;
-  const action=status.key==="done"
-    ? `<button class="ghost small" onclick="undoTask('${t.id}','${i.dueDate}')">Desfazer</button>`
-    : `<button class="green small" ${status.canComplete?"":"disabled"} onclick="${status.canComplete?`completeTask('${t.id}','${i.dueDate}')`:""}">Feita</button>`;
-  el.innerHTML=`<div><div class="mission-title">${sysIcon(t.system)} ${t.text}</div>${tagHtml(t,i.dueDate)}${statusLine}${who?`<p>Feita por ${who}</p>`:""}</div><div class="actions">${action}<button class="small" onclick="openTaskModal('${t.scheduleType}','${t.id}')">Editar</button></div>`;
+  let action="";
+  if(status.key==="done"){
+    action=`<button class="ghost small" onclick="undoTask('${t.id}','${i.dueDate}')">Desfazer</button>`;
+  }else{
+    action=`<button class="green small" ${status.canComplete?"":"disabled"} onclick="${status.canComplete?`completeTask('${t.id}','${i.dueDate}')`:""}">Feita</button>`;
+  }
+  const yesterdayKey=dateKey(addDays(parseDate(todayKey()),-1));
+  const yesterdayBtn=(t.scheduleType==="daily"&&i.dueDate===todayKey()&&!isTaskDoneForDate(t.id,yesterdayKey))
+    ? `<button class="ghost small" onclick="completeYesterday('${t.id}')">Fiz ontem</button>`:"";
+  el.innerHTML=`<div><div class="mission-title">${sysIcon(t.system)} ${t.text}</div>${tagHtml(t,i.dueDate)}${statusLine}${who?`<p>Feita por ${who}</p>`:""}</div><div class="actions">${action}${yesterdayBtn}<button class="small" onclick="openTaskModal('${t.scheduleType}','${t.id}')">Editar</button></div>`;
   return el;
 }
 function competition(){
@@ -254,13 +290,14 @@ function renderMissions(){
   refreshSnapshots();
   $("todayDate").textContent=new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"2-digit"});
   document.querySelectorAll(".mission-tab").forEach(b=>b.classList.toggle("active",b.dataset.missionView===missionView));
+  document.querySelectorAll(".status-filter").forEach(b=>b.classList.toggle("active",b.dataset.statusFilter===missionStatusFilter));
   if(missionView==="base")renderMissionBase();if(missionView==="daily")renderMissionDaily();if(missionView==="weekly")renderMissionWeekly();if(missionView==="monthly")renderMissionMonthly();
 }
 function renderMissionBase(){
   const general=nextInstance(),daily=nextInstance("daily"),weekly=nextInstance("weekly"),monthly=nextInstance("monthly"),late=getInstances(-30,-1).filter(i=>i.late),blockedToday=getInstances(0,0).filter(i=>getMissionStatus(i.task,i.dueDate).key==="locked").length,st=dayStats(todayKey());
   $("missionView").innerHTML=`${noticesHtml()}<div class="mission-lobby"><div class="card"><div class="section-head"><h2>Próxima</h2></div><div id="generalNext"></div></div><div class="card"><div class="section-head"><h2>Base hoje</h2></div><div class="stats-grid"><div class="stat"><strong>${st.done}/${st.totalDue}</strong><span>feitas</span></div><div class="stat"><strong>${st.percent}%</strong><span>progresso</span></div><div class="stat"><strong>${blockedToday}</strong><span>bloqueadas</span></div><div class="stat"><strong>${st.perfect?"⭐":"—"}</strong><span>dia perfeito</span></div></div></div></div><div class="card"><div class="panel-grid"><div class="panel"><div class="panel-title">☀️ Diária</div><div id="nextDaily"></div></div><div class="panel"><div class="panel-title">📆 Semanal</div><div id="nextWeekly"></div></div><div class="panel"><div class="panel-title">🗓️ Mensal</div><div id="nextMonthly"></div></div></div></div><div class="card"><div class="section-head"><h2>Atrasadas</h2><span class="pill">${late.length}</span></div><div id="lateList" class="mission-list"></div></div>`;
   renderMini("generalNext",general,true);renderMini("nextDaily",daily);renderMini("nextWeekly",weekly);renderMini("nextMonthly",monthly);
-  const lateList=$("lateList");if(!late.length)lateList.innerHTML=`<div class="empty">Nenhuma atrasada.</div>`;late.slice(0,8).forEach(i=>lateList.appendChild(missionCard(i)));
+  const lateList=$("lateList");if(!late.length)lateList.innerHTML=`<div class="empty">Nenhuma atrasada.</div>`;filterInstances(late).slice(0,8).forEach(i=>lateList.appendChild(missionCard(i)));
 }
 function renderMini(id,i,big=false){
   const box=$(id);if(!i){box.innerHTML=`<div class="empty">Nada pendente.</div>`;return}
@@ -268,12 +305,14 @@ function renderMini(id,i,big=false){
   const statusLine=status.detail?`<div class="status-line ${status.key}">${status.icon} ${status.label} • ${status.detail}</div>`:`<div class="status-line ${status.key}">${status.icon} ${status.label}</div>`;
   box.innerHTML=`<div class="${big?'panel big':''}"><div class="mission-title">${sysIcon(t.system)} ${t.text}</div>${tagHtml(t,i.dueDate)}${statusLine}<div class="actions"><button class="green small" ${status.canComplete?"":"disabled"} onclick="${status.canComplete?`completeTask('${t.id}','${i.dueDate}')`:""}">Feita</button><button class="small" onclick="missionView='${t.scheduleType}';renderMissions()">Ver</button></div></div>`;
 }
-function renderMissionDaily(){const today=getInstances(0,0).filter(i=>i.task.scheduleType==="daily"||i.task.priority==="emergencial");$("missionView").innerHTML=`${noticesHtml()}<div class="card"><div class="view-head"><h2>Diárias</h2><button class="small" onclick="openTaskModal('daily')">+ Nova diária</button></div><div id="dailyList" class="mission-list"></div></div>`;const list=$("dailyList");if(!today.length)list.innerHTML=`<div class="empty">Nenhuma diária para hoje.</div>`;today.forEach(i=>list.appendChild(missionCard(i)))}
-function renderMissionWeekly(){const base=parseDate(todayKey()),monday=addDays(base,-((base.getDay()+6)%7));$("missionView").innerHTML=`${noticesHtml()}<div class="card"><div class="view-head"><h2>Semanais</h2><button class="small" onclick="openTaskModal('weekly')">+ Nova semanal</button></div><div class="week-board" id="weekBoard"></div></div>`;const board=$("weekBoard");for(let i=0;i<7;i++){const d=addDays(monday,i),key=dateKey(d),items=dueTasks(key).filter(t=>t.scheduleType==="weekly").map(t=>({task:t,dueDate:key,date:d,done:isTaskDoneForDate(t.id,key),late:key<todayKey()&&!isTaskDoneForDate(t.id,key)&&isParentDoneForOccurrence(t,key),blocked:!isTaskDoneForDate(t.id,key)&&!isParentDoneForOccurrence(t,key)})),col=document.createElement("div");col.className="week-day";col.innerHTML=`<strong>${weekFull[d.getDay()]}</strong><div class="mission-list"></div>`;const list=col.querySelector(".mission-list");if(!items.length)list.innerHTML=`<div class="empty">—</div>`;items.forEach(inst=>list.appendChild(missionCard(inst)));board.appendChild(col)}}
-function renderMissionMonthly(){const items=getInstances(0,45).filter(i=>i.task.scheduleType==="monthly"&&!i.done).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));$("missionView").innerHTML=`${noticesHtml()}<div class="card"><div class="view-head"><h2>Mensais</h2><button class="small" onclick="openTaskModal('monthly')">+ Nova mensal</button></div><div id="monthlyList" class="month-list"></div></div>`;const list=$("monthlyList");if(!items.length)list.innerHTML=`<div class="empty">Nenhuma mensal próxima.</div>`;items.forEach(i=>list.appendChild(missionCard(i)))}
-function fillParentOptions(currentId=""){
-  const sel=$("taskParent");sel.innerHTML='<option value="">Sem missão anterior</option>';
-  state.tasks.filter(t=>t.id!==currentId).forEach(t=>{const o=document.createElement("option");o.value=t.id;o.textContent=`Só liberar depois de: ${t.text}`;sel.appendChild(o)});
+function renderMissionDaily(){
+  // Diárias: apenas a ocorrência de hoje.
+  // Amanhã não aparece hoje, para evitar clique antecipado.
+  const today=filterInstances(getInstances(0,0).filter(i=>i.task.scheduleType==="daily"||i.task.priority==="emergencial"));
+  $("missionView").innerHTML=`${noticesHtml()}<div class="card"><div class="view-head"><h2>Diárias</h2><button class="small" onclick="openTaskModal('daily')">+ Nova diária</button></div><div id="dailyList" class="mission-list"></div></div>`;
+  const list=$("dailyList");
+  if(!today.length)list.innerHTML=`<div class="empty">Nenhuma diária para hoje.</div>`;
+  today.forEach(i=>list.appendChild(missionCard(i)));
 }
 
 function updateRepeatFields(type){
@@ -290,7 +329,11 @@ function openTaskModal(type,taskId=null){
   fillParentOptions(t?.id||"");$("taskParent").value=t?.parentTaskId||"";
   updateRepeatFields(type);
   $("weekdayBox").innerHTML=[0,1,2,3,4,5,6].map(d=>`<button type="button" class="weekday ${(t?.weeklyDays||[]).includes(d)?"active":""}" data-day="${d}">${weekNames[d]}</button>`).join("");
-  document.querySelectorAll(".weekday").forEach(b=>b.onclick=()=>b.classList.toggle("active"));$("taskModal").classList.add("open");
+  document.querySelectorAll(".weekday").forEach(b=>b.onclick=()=>b.classList.toggle("active"));
+  if($("taskDangerRow"))$("taskDangerRow").style.display=t?"flex":"none";
+  if(t&&$("archiveTaskBtn"))$("archiveTaskBtn").onclick=()=>archiveTask(t.id);
+  if(t&&$("deleteTaskBtn"))$("deleteTaskBtn").onclick=()=>deleteTask(t.id);
+  $("taskModal").classList.add("open");
 }
 function saveTask(){
   const text=$("taskText").value.trim();if(!text)return alert("Digite o nome.");
@@ -315,7 +358,12 @@ function renderSystemHealth(){
 function renderStreaks(){$("streakGrid").innerHTML=[["🏡","Base",null],...systemKeys.map(k=>[sysIcon(k),sysLabel(k),k])].map(([i,n,c])=>`<div class="streak-card"><strong>${i} ${n}</strong><p>${streakFor(c)} dias seguidos</p></div>`).join("")}
 function renderProfiles(){
   $("profileGrid").innerHTML="";
-  [["Mu",personXp("Mu"),"👨"],["Ju",personXp("Ju"),"👩"]].forEach(([name,xp,emoji])=>{const d=document.createElement("div");d.className="profile-card";d.innerHTML=`<div class="profile-avatar">${emoji}</div><h3>${name}</h3><p>${Math.round(xp)} XP</p><div class="avatar-items">${avatarItems.map(([icon,label,need])=>`<span class="item ${xp>=need?"":"locked"}">${icon} ${label}</span>`).join("")}</div>`;$("profileGrid").appendChild(d)});
+  [["Mu",personXp("Mu"),"icon-192.png","👨"],["Ju",personXp("Ju"),"icon-512.png","👩"]].forEach(([name,xp,img,emoji])=>{
+    const d=document.createElement("div");
+    d.className="profile-card";
+    d.innerHTML=`<img class="avatar-img" src="${img}" alt="${name}" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><div class="profile-avatar" style="display:none">${emoji}</div><h3>${name}</h3><p>${Math.round(xp)} XP</p><div class="avatar-items">${avatarItems.map(([icon,label,need])=>`<span class="item ${xp>=need?"":"locked"}">${icon} ${label}</span>`).join("")}</div>`;
+    $("profileGrid").appendChild(d);
+  });
 }
 function renderCompetition(){
   const c=competition(),viewer=activeProfile,other=viewer==="Mu"?"Ju":"Mu";
@@ -433,9 +481,10 @@ function setup(){
   $("switchProfileBtn").onclick=()=>{$("profileGate").classList.remove("hidden")};
   document.querySelectorAll(".nav-btn").forEach(b=>b.onclick=()=>{document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));$("screen-"+b.dataset.screen).classList.add("active");document.querySelectorAll(".nav-btn").forEach(x=>x.classList.remove("active"));b.classList.add("active")});
   document.querySelectorAll(".mission-tab").forEach(b=>b.onclick=()=>{missionView=b.dataset.missionView;renderMissions()});
+  document.querySelectorAll(".status-filter").forEach(b=>b.onclick=()=>{missionStatusFilter=b.dataset.statusFilter;renderMissions()});
   $("saveTaskBtn").onclick=saveTask;$("closeTaskModal").onclick=()=>$("taskModal").classList.remove("open");
   $("openGoalBtn").onclick=()=>$("goalModal").classList.add("open");$("closeGoalBtn").onclick=()=>$("goalModal").classList.remove("open");$("saveGoalBtn").onclick=addGoal;if($("addWasteBtn"))$("addWasteBtn").onclick=addWaste;
-  $("prevMonthBtn").onclick=()=>{calendarMonth.setMonth(calendarMonth.getMonth()-1);render(false)};$("nextMonthBtn").onclick=()=>{calendarMonth.setMonth(calendarMonth.getMonth()+1);render(false)};
+  $("prevMonthBtn").onclick=()=>{calendarMonth.setMonth(calendarMonth.getMonth()-1);render(false)};$("nextMonthBtn").onclick=()=>{calendarMonth.setMonth(calendarMonth.getMonth()+1);render(false)};if($("fixHistoryBtn"))$("fixHistoryBtn").onclick=()=>{dedupeCompletions();render()};
   $("notifyBtn").onclick=()=>{$("notifyModal").classList.add("open");renderNotifyModal()};$("closeNotifyBtn").onclick=()=>$("notifyModal").classList.remove("open");
   $("enablePushBtn").onclick=enablePush;
 }
