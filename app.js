@@ -4,7 +4,7 @@ const CONFIG={
   ONESIGNAL_APP_ID:"d8f5cd74-b37b-441c-ab84-cce468a9d95d"
 };
 const FAMILY_ID="base-mu-ju-v8";
-let sb=null,remoteReady=false,savingRemote=false,missionView="base",missionStatusFilter="all",taskModalType="daily",editingTaskId=null,calendarMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1),trophyFilter="Todas";
+let sb=null,remoteReady=false,savingRemote=false,missionView="base",taskModalType="daily",editingTaskId=null,calendarMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1),trophyFilter="Todas";
 let activeProfile=localStorage.getItem("bf_active_profile")||"";
 const systems={
   pets:["🐾","Pets"],casa:["🏠","Casa"],financeiro:["💰","Financeiro"],relacionamento:["❤️","Relacionamento"],saude:["🧠","Saúde"]
@@ -220,16 +220,10 @@ function missionCard(i){
   const el=document.createElement("div");
   el.className="mission-card "+status.key;
   const statusLine=status.detail?`<div class="status-line ${status.key}">${status.icon} ${status.label} • ${status.detail}</div>`:`<div class="status-line ${status.key}">${status.icon} ${status.label}</div>`;
-  let action="";
-  if(status.key==="done"){
-    action=`<button class="ghost small" onclick="undoTask('${t.id}','${i.dueDate}')">Desfazer</button>`;
-  }else{
-    action=`<button class="green small" ${status.canComplete?"":"disabled"} onclick="${status.canComplete?`completeTask('${t.id}','${i.dueDate}')`:""}">Feita</button>`;
-  }
-  const yesterdayKey=dateKey(addDays(parseDate(todayKey()),-1));
-  const yesterdayBtn=(t.scheduleType==="daily"&&i.dueDate===todayKey()&&!isTaskDoneForDate(t.id,yesterdayKey))
-    ? `<button class="ghost small" onclick="completeYesterday('${t.id}')">Fiz ontem</button>`:"";
-  el.innerHTML=`<div><div class="mission-title">${sysIcon(t.system)} ${t.text}</div>${tagHtml(t,i.dueDate)}${statusLine}${who?`<p>Feita por ${who}</p>`:""}</div><div class="actions">${action}${yesterdayBtn}<button class="small" onclick="openTaskModal('${t.scheduleType}','${t.id}')">Editar</button></div>`;
+  const action=status.key==="done"
+    ? `<button class="ghost small" onclick="undoTask('${t.id}','${i.dueDate}')">Desfazer</button>`
+    : `<button class="green small" ${status.canComplete?"":"disabled"} onclick="${status.canComplete?`completeTask('${t.id}','${i.dueDate}')`:""}">Feita</button>`;
+  el.innerHTML=`<div><div class="mission-title">${sysIcon(t.system)} ${t.text}</div>${tagHtml(t,i.dueDate)}${statusLine}${who?`<p>Feita por ${who}</p>`:""}</div><div class="actions">${action}<button class="small" onclick="openTaskModal('${t.scheduleType}','${t.id}')">Editar</button></div>`;
   return el;
 }
 function competition(){
@@ -290,14 +284,13 @@ function renderMissions(){
   refreshSnapshots();
   $("todayDate").textContent=new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"2-digit"});
   document.querySelectorAll(".mission-tab").forEach(b=>b.classList.toggle("active",b.dataset.missionView===missionView));
-  document.querySelectorAll(".status-filter").forEach(b=>b.classList.toggle("active",b.dataset.statusFilter===missionStatusFilter));
   if(missionView==="base")renderMissionBase();if(missionView==="daily")renderMissionDaily();if(missionView==="weekly")renderMissionWeekly();if(missionView==="monthly")renderMissionMonthly();
 }
 function renderMissionBase(){
   const general=nextInstance(),daily=nextInstance("daily"),weekly=nextInstance("weekly"),monthly=nextInstance("monthly"),late=getInstances(-30,-1).filter(i=>i.late),blockedToday=getInstances(0,0).filter(i=>getMissionStatus(i.task,i.dueDate).key==="locked").length,st=dayStats(todayKey());
   $("missionView").innerHTML=`${noticesHtml()}<div class="mission-lobby"><div class="card"><div class="section-head"><h2>Próxima</h2></div><div id="generalNext"></div></div><div class="card"><div class="section-head"><h2>Base hoje</h2></div><div class="stats-grid"><div class="stat"><strong>${st.done}/${st.totalDue}</strong><span>feitas</span></div><div class="stat"><strong>${st.percent}%</strong><span>progresso</span></div><div class="stat"><strong>${blockedToday}</strong><span>bloqueadas</span></div><div class="stat"><strong>${st.perfect?"⭐":"—"}</strong><span>dia perfeito</span></div></div></div></div><div class="card"><div class="panel-grid"><div class="panel"><div class="panel-title">☀️ Diária</div><div id="nextDaily"></div></div><div class="panel"><div class="panel-title">📆 Semanal</div><div id="nextWeekly"></div></div><div class="panel"><div class="panel-title">🗓️ Mensal</div><div id="nextMonthly"></div></div></div></div><div class="card"><div class="section-head"><h2>Atrasadas</h2><span class="pill">${late.length}</span></div><div id="lateList" class="mission-list"></div></div>`;
   renderMini("generalNext",general,true);renderMini("nextDaily",daily);renderMini("nextWeekly",weekly);renderMini("nextMonthly",monthly);
-  const lateList=$("lateList");if(!late.length)lateList.innerHTML=`<div class="empty">Nenhuma atrasada.</div>`;filterInstances(late).slice(0,8).forEach(i=>lateList.appendChild(missionCard(i)));
+  const lateList=$("lateList");if(!late.length)lateList.innerHTML=`<div class="empty">Nenhuma atrasada.</div>`;late.slice(0,8).forEach(i=>lateList.appendChild(missionCard(i)));
 }
 function renderMini(id,i,big=false){
   const box=$(id);if(!i){box.innerHTML=`<div class="empty">Nada pendente.</div>`;return}
@@ -308,7 +301,7 @@ function renderMini(id,i,big=false){
 function renderMissionDaily(){
   // Diárias: apenas a ocorrência de hoje.
   // Amanhã não aparece hoje, para evitar clique antecipado.
-  const today=filterInstances(getInstances(0,0).filter(i=>i.task.scheduleType==="daily"||i.task.priority==="emergencial"));
+  const today=getInstances(0,0).filter(i=>i.task.scheduleType==="daily"||i.task.priority==="emergencial");
   $("missionView").innerHTML=`${noticesHtml()}<div class="card"><div class="view-head"><h2>Diárias</h2><button class="small" onclick="openTaskModal('daily')">+ Nova diária</button></div><div id="dailyList" class="mission-list"></div></div>`;
   const list=$("dailyList");
   if(!today.length)list.innerHTML=`<div class="empty">Nenhuma diária para hoje.</div>`;
@@ -358,12 +351,7 @@ function renderSystemHealth(){
 function renderStreaks(){$("streakGrid").innerHTML=[["🏡","Base",null],...systemKeys.map(k=>[sysIcon(k),sysLabel(k),k])].map(([i,n,c])=>`<div class="streak-card"><strong>${i} ${n}</strong><p>${streakFor(c)} dias seguidos</p></div>`).join("")}
 function renderProfiles(){
   $("profileGrid").innerHTML="";
-  [["Mu",personXp("Mu"),"icon-192.png","👨"],["Ju",personXp("Ju"),"icon-512.png","👩"]].forEach(([name,xp,img,emoji])=>{
-    const d=document.createElement("div");
-    d.className="profile-card";
-    d.innerHTML=`<img class="avatar-img" src="${img}" alt="${name}" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><div class="profile-avatar" style="display:none">${emoji}</div><h3>${name}</h3><p>${Math.round(xp)} XP</p><div class="avatar-items">${avatarItems.map(([icon,label,need])=>`<span class="item ${xp>=need?"":"locked"}">${icon} ${label}</span>`).join("")}</div>`;
-    $("profileGrid").appendChild(d);
-  });
+  [["Mu",personXp("Mu"),"👨"],["Ju",personXp("Ju"),"👩"]].forEach(([name,xp,emoji])=>{const d=document.createElement("div");d.className="profile-card";d.innerHTML=`<div class="profile-avatar">${emoji}</div><h3>${name}</h3><p>${Math.round(xp)} XP</p><div class="avatar-items">${avatarItems.map(([icon,label,need])=>`<span class="item ${xp>=need?"":"locked"}">${icon} ${label}</span>`).join("")}</div>`;$("profileGrid").appendChild(d)});
 }
 function renderCompetition(){
   const c=competition(),viewer=activeProfile,other=viewer==="Mu"?"Ju":"Mu";
@@ -481,10 +469,9 @@ function setup(){
   $("switchProfileBtn").onclick=()=>{$("profileGate").classList.remove("hidden")};
   document.querySelectorAll(".nav-btn").forEach(b=>b.onclick=()=>{document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));$("screen-"+b.dataset.screen).classList.add("active");document.querySelectorAll(".nav-btn").forEach(x=>x.classList.remove("active"));b.classList.add("active")});
   document.querySelectorAll(".mission-tab").forEach(b=>b.onclick=()=>{missionView=b.dataset.missionView;renderMissions()});
-  document.querySelectorAll(".status-filter").forEach(b=>b.onclick=()=>{missionStatusFilter=b.dataset.statusFilter;renderMissions()});
   $("saveTaskBtn").onclick=saveTask;$("closeTaskModal").onclick=()=>$("taskModal").classList.remove("open");
   $("openGoalBtn").onclick=()=>$("goalModal").classList.add("open");$("closeGoalBtn").onclick=()=>$("goalModal").classList.remove("open");$("saveGoalBtn").onclick=addGoal;if($("addWasteBtn"))$("addWasteBtn").onclick=addWaste;
-  $("prevMonthBtn").onclick=()=>{calendarMonth.setMonth(calendarMonth.getMonth()-1);render(false)};$("nextMonthBtn").onclick=()=>{calendarMonth.setMonth(calendarMonth.getMonth()+1);render(false)};if($("fixHistoryBtn"))$("fixHistoryBtn").onclick=()=>{dedupeCompletions();render()};
+  $("prevMonthBtn").onclick=()=>{calendarMonth.setMonth(calendarMonth.getMonth()-1);render(false)};$("nextMonthBtn").onclick=()=>{calendarMonth.setMonth(calendarMonth.getMonth()+1);render(false)};
   $("notifyBtn").onclick=()=>{$("notifyModal").classList.add("open");renderNotifyModal()};$("closeNotifyBtn").onclick=()=>$("notifyModal").classList.remove("open");
   $("enablePushBtn").onclick=enablePush;
 }
