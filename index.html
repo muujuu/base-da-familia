@@ -56,12 +56,6 @@
             <button class="mission-tab" data-mission-view="weekly">Semanais</button>
             <button class="mission-tab" data-mission-view="monthly">Mensais</button>
           </div>
-          <div class="status-filters" id="missionStatusFilter">
-            <button class="status-filter active" data-status-filter="all">Todas</button>
-            <button class="status-filter" data-status-filter="available">Disponíveis</button>
-            <button class="status-filter" data-status-filter="locked">Bloqueadas</button>
-            <button class="status-filter" data-status-filter="done">Feitas</button>
-          </div>
         </div>
         <div id="missionView"></div>
       </section>
@@ -163,7 +157,7 @@
         </div>
 
         <div class="card">
-          <div class="section-head"><h2>✅ Feitas</h2><button class="ghost small" id="fixHistoryBtn">Corrigir histórico</button></div>
+          <div class="section-head"><h2>✅ Feitas</h2></div>
           <div id="completedList" class="list"></div>
         </div>
       </section>
@@ -224,10 +218,6 @@
         </select>
         <div id="weekdayBox" class="weekday-box repeat-field repeat-weekly"></div>
         <button id="saveTaskBtn">Salvar missão</button>
-        <div class="danger-row" id="taskDangerRow">
-          <button id="archiveTaskBtn" type="button" class="ghost small">Arquivar/Pausar</button>
-          <button id="deleteTaskBtn" type="button" class="red small">Excluir missão</button>
-        </div>
       </div>
     </div>
   </div>
