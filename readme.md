@@ -1,12 +1,15 @@
-# Base da Família V8.7 — Sem filtros
+# Base da Família V8.6 — Fluidez
 
-Correções:
-- Remove filtros Todas / Disponíveis / Bloqueadas / Feitas.
-- Mantém todas as missões visíveis na lista.
-- Corrige Excluir missão.
-- Corrige Arquivar/Pausar missão.
-- Mantém lock por data.
-- Mantém dependências visíveis e bloqueadas.
-- Mantém Cofrinho com Álcool, maconha e delivery.
+Adicionado:
+- Excluir missão.
+- Arquivar/Pausar missão.
+- Fiz ontem para missões diárias.
+- Filtro de missões: Todas, Disponíveis, Bloqueadas, Feitas.
+- Corrigir histórico duplicado na aba Histórico.
+- Imagens de perfil Mu/Ju com fallback para emoji se a imagem não carregar.
 
-Use esta versão como base mais simples e estável.
+Mantido:
+- Lock por data.
+- Missões futuras agendadas.
+- Dependências visíveis e bloqueadas.
+- Cofrinho com Álcool, maconha e delivery.
