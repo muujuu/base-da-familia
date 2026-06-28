@@ -1,14 +1,256 @@
-<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"><meta name="theme-color" content="#b77cff"><title>Base da Família</title><link rel="manifest" href="manifest.json"><link rel="stylesheet" href="style.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head><body>
-<div id="profileGate" class="gate hidden"><div class="modal-card center"><img src="icon-192.png" class="logo"><h1>Base da Família</h1><p>Quem está usando agora?</p><div class="row"><button data-profile="Mu">👤 Mu</button><button data-profile="Ju">👤 Ju</button></div></div></div>
-<main class="app"><header class="top"><div class="brand"><img src="icon-192.png"><div><h1>Base da Família</h1><p><span id="syncDot" class="dot local"></span> <span id="syncText">modo local</span> <span id="profilePill" class="pill">sem perfil</span></p></div></div><div class="row"><button id="profileBtn" class="ghost small">👤 Perfil</button><button id="themeBtn" class="ghost small">🎨 Tema</button></div></header>
-<section id="missions" class="view active"><div class="card"><div class="head"><h2>Missões</h2><span id="todayPill" class="pill">Hoje</span></div><div class="tabs"><button class="tab active" data-mv="base">Base</button><button class="tab" data-mv="daily">Diárias</button><button class="tab" data-mv="weekly">Semanais</button><button class="tab" data-mv="monthly">Mensais</button></div></div><div id="missionContent"></div></section>
-<section id="base" class="view"><div class="card"><h2>📊 Base</h2><div id="baseStats" class="stats"></div></div><div class="card"><h2>🏠 Evolução</h2><div id="homeProgress"></div></div><div class="card"><h2>👥 Perfis</h2><div id="profileStats" class="profiles"></div></div></section>
-<section id="finance" class="view"><div class="card"><div class="head"><h2>🐷 Cofrinho</h2><button id="goalBtn" class="small">+ Meta</button></div><div id="goalList"></div></div><div class="card"><div class="head"><h2>🍻 Álcool, maconha e delivery</h2><span id="wasteTotal" class="pill">R$ 0,00</span></div><div class="inline"><select id="wasteType"><option value="alcool">🍻 Álcool</option><option value="maconha">🌿 Maconha</option><option value="delivery">🍔 Delivery</option></select><input id="wasteAmount" type="number" step="0.01" placeholder="Valor"><button id="addWaste" class="small">Adicionar</button></div><div id="wasteStats" class="stats smallstats"></div><div id="wasteList"></div></div></section>
-<section id="hall" class="view"><div class="card"><h2>🏆 Hall</h2><div id="hallStats" class="stats"></div></div><div class="card"><h2>🎖️ Conquistas</h2><div id="achievements" class="profiles"></div></div></section>
-<section id="history" class="view"><div class="card"><div class="head"><button id="prevMonth" class="round">‹</button><h2 id="calTitle">Histórico</h2><button id="nextMonth" class="round">›</button></div><div id="calGrid" class="calendar"></div></div><div class="card"><div class="head"><h2>✅ Feitas</h2><button id="fixHistory" class="ghost small">Corrigir histórico</button></div><div id="doneList"></div></div></section></main>
-<nav><button class="nav active" data-view="missions">⚡<span>Missões</span></button><button class="nav" data-view="base">📊<span>Base</span></button><button class="nav" data-view="finance">🐷<span>Cofrinho</span></button><button class="nav" data-view="hall">🏆<span>Hall</span></button><button class="nav" data-view="history">📜<span>Histórico</span></button></nav>
-<div id="taskModal" class="modal"><div class="modal-card"><button class="close" id="closeTask">×</button><h2 id="taskTitle">Nova missão</h2><label>Nome</label><input id="taskText"><label>Sistema</label><select id="taskSystem"><option value="casa">🏠 Casa</option><option value="pets">🐾 Pets</option><option value="saude">🧠 Saúde</option><option value="relacionamento">💞 Relacionamento</option><option value="financeiro">🐷 Financeiro</option></select><div class="inline"><div><label>Dificuldade</label><select id="taskDifficulty"><option value="facil">Fácil</option><option value="media">Média</option><option value="dificil">Difícil</option><option value="muito_dificil">Muito difícil</option></select></div><div><label>Prioridade</label><select id="taskPriority"><option value="baixa">Baixa</option><option value="normal">Normal</option><option value="alta">Alta</option><option value="emergencial">Emergencial</option></select></div></div><div class="inline"><div><label>Minutos</label><input id="taskMinutes" type="number" min="1" value="5"></div><div><label>Horário</label><input id="taskTime" type="time"></div></div><div id="dailyBox"><label>Repetir a cada X dias</label><input id="taskInterval" type="number" min="1" value="1"></div><div id="weeklyBox"><label>Dias da semana</label><div id="weekdays" class="weekdays"></div></div><div id="monthlyBox"><label>Dia do mês</label><input id="taskMonthDay" type="number" min="1" max="31" value="1"></div><label>Ordem</label><select id="taskParent"><option value="">Sem dependência</option></select><button id="saveTask">Salvar missão</button><div id="dangerRow" class="danger hidden"><button id="archiveTask" class="ghost small">Arquivar/Pausar</button><button id="deleteTask" class="red small">Excluir</button></div></div></div>
-<div id="goalModal" class="modal"><div class="modal-card"><button class="close" id="closeGoal">×</button><h2>Nova meta</h2><label>Nome</label><input id="goalName"><label>Valor alvo</label><input id="goalTarget" type="number" step="0.01"><label>Guardado</label><input id="goalSaved" type="number" step="0.01"><button id="saveGoal">Salvar</button></div></div>
-<div id="profileModal" class="modal"><div class="modal-card center"><button class="close" id="closeProfile">×</button><h2>Perfil</h2><div class="row"><button data-profile="Mu">👤 Mu</button><button data-profile="Ju">👤 Ju</button></div></div></div>
-<div id="themeModal" class="modal"><div class="modal-card"><button class="close" id="closeTheme">×</button><h2>Personalizar tema</h2><label>Modo</label><select id="themeMode"><option value="dark">Escuro</option><option value="light">Claro</option></select><label>Estilo</label><select id="themePreset"><option value="cosmic">Cósmico</option><option value="sunset">Pôr do sol</option><option value="forest">Floresta</option><option value="ocean">Oceano</option><option value="rose">Rosa</option></select><label>Cor principal</label><input id="themeAccent" type="color" value="#b77cff"><button id="saveTheme">Aplicar</button></div></div>
-<script src="app.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" content="#11101a"/>
+  <title>Base da Família</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+</head>
+<body>
+  <div id="profileGate" class="profile-gate">
+    <div class="profile-panel">
+      <div class="logo big"><img src="icon-192.png" alt="Base"></div>
+      <h1>Base da Família</h1>
+      <p>Escolha quem está usando este aparelho.</p>
+      <div class="profile-choice-grid">
+        <button data-profile="Mu" class="profile-choice">👨<strong>Mu</strong></button>
+        <button data-profile="Ju" class="profile-choice">👩<strong>Ju</strong></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="app" id="appShell">
+    <header class="header">
+      <div class="brand">
+        <div class="logo"><img src="icon-192.png" alt="Base"></div>
+        <div>
+          <h1>Base da Família</h1>
+          <div class="sync">
+            <span class="dot local" id="syncDot"></span>
+            <span id="syncText">modo local</span>
+            <span class="profile-pill" id="activeProfilePill">Perfil</span>
+          </div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="ghost small" id="switchProfileBtn">👤 Perfil</button>
+        <button class="ghost small" id="notifyBtn">🔔 Avisos</button>
+        <button class="theme-toggle" id="themeToggle">☀️ Tema</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="screen-missoes" class="screen active">
+        <div class="card compact">
+          <div class="section-head">
+            <h2>Missões</h2>
+            <span class="pill" id="todayDate">Hoje</span>
+          </div>
+          <div class="mission-tabs">
+            <button class="mission-tab active" data-mission-view="base">Base</button>
+            <button class="mission-tab" data-mission-view="daily">Diárias</button>
+            <button class="mission-tab" data-mission-view="weekly">Semanais</button>
+            <button class="mission-tab" data-mission-view="monthly">Mensais</button>
+          </div>
+        </div>
+        <div id="missionView"></div>
+      </section>
+
+      <section id="screen-base" class="screen">
+        <div class="card base-evolution">
+          <div class="section-head">
+            <h2>🏡 Evolução da Base</h2>
+            <span class="pill" id="baseLevelPill">Nível 1</span>
+          </div>
+          <div class="home-stage" id="homeStageIcon">🏚️</div>
+          <h2 id="homeStageName">Base improvisada</h2>
+          <p id="homeStageDesc"></p>
+          <div class="progress"><div class="progress-fill" id="homeProgress"></div></div>
+        </div>
+
+        <div class="card">
+          <div class="section-head"><h2>💚 Saúde da Base</h2><span class="pill" id="baseHealthPill">0%</span></div>
+          <div class="progress big-progress"><div class="progress-fill" id="baseHealthProgress"></div></div>
+          <div class="system-grid" id="systemHealthGrid"></div>
+        </div>
+
+        <div class="three-col">
+          <div class="dash-card"><h3>👨 Mu</h3><div class="dash-main" id="dashMuBeer">🍺 Bavaria</div><p id="dashMuSummary"></p></div>
+          <div class="dash-card"><h3>👩 Ju</h3><div class="dash-main" id="dashJuBeer">🍺 Bavaria</div><p id="dashJuSummary"></p></div>
+          <div class="dash-card"><h3>⚡ Energia</h3><div class="dash-main" id="energyText">0/100</div><p>Energia da Base</p></div>
+        </div>
+
+        <div class="card">
+          <div class="section-head"><h2>🔥 Sequências</h2></div>
+          <div class="streak-grid" id="streakGrid"></div>
+        </div>
+
+        <div class="card">
+          <div class="section-head"><h2>👤 Perfis e avatares</h2><span class="pill">itens por XP</span></div>
+          <div class="profile-grid" id="profileGrid"></div>
+        </div>
+
+        <div class="card">
+          <div class="section-head"><h2>🏁 Competição saudável</h2></div>
+          <div id="competitionBox" class="list"></div>
+        </div>
+      </section>
+
+      <section id="screen-cofrinho" class="screen">
+        <div class="card">
+          <div class="section-head">
+            <h2>🐷 Cofrinho</h2>
+            <button class="small" id="openGoalBtn">+ Meta</button>
+          </div>
+          <div class="stats-grid">
+            <div class="stat"><strong id="cofrinhoTotal">R$ 0,00</strong><span>guardado</span></div>
+            <div class="stat"><strong id="cofrinhoMissing">R$ 0,00</strong><span>faltando</span></div>
+            <div class="stat"><strong id="cofrinhoCount">0</strong><span>metas</span></div>
+          </div>
+          <div id="goalList" class="goal-list"></div>
+        </div>
+
+        <div class="card">
+          <div class="section-head">
+            <h2>🍻 Álcool, maconha e delivery</h2>
+            <span class="pill" id="wasteMonthTotal">R$ 0,00 no mês</span>
+          </div>
+          <p>Registro simples das futilidades para enxergar para onde o dinheiro está indo.</p>
+          <div class="waste-form">
+            <select id="wasteType">
+              <option value="alcool">🍻 Álcool</option>
+              <option value="maconha">🌿 Maconha</option>
+              <option value="delivery">🍔 Delivery</option>
+            </select>
+            <input id="wasteAmount" type="number" min="0" step="0.01" placeholder="Valor gasto">
+            <button id="addWasteBtn" class="small">Adicionar</button>
+          </div>
+          <div class="stats-grid" id="wasteStats"></div>
+          <div id="wasteList" class="list"></div>
+        </div>
+      </section>
+
+      <section id="screen-hall" class="screen">
+        <div class="card">
+          <div class="section-head"><h2>🏆 Hall</h2><span class="pill"><span id="achievementBadge">0</span> desbloqueadas</span></div>
+          <div class="trophy-tabs" id="trophyTabs"></div>
+          <div class="trophy-grid" id="achievementList"></div>
+        </div>
+      </section>
+
+      <section id="screen-historico" class="screen">
+        <div class="card">
+          <div class="section-head"><h2>📜 Histórico</h2></div>
+          <div class="month-controls">
+            <button class="small" id="prevMonthBtn">◀</button>
+            <strong id="monthTitle"></strong>
+            <button class="small" id="nextMonthBtn">▶</button>
+          </div>
+          <div class="days">
+            <div class="day-name">Seg</div><div class="day-name">Ter</div><div class="day-name">Qua</div><div class="day-name">Qui</div><div class="day-name">Sex</div><div class="day-name">Sáb</div><div class="day-name">Dom</div>
+          </div>
+          <div class="days" id="calendarDays"></div>
+        </div>
+
+        <div class="card">
+          <div class="section-head"><h2>✅ Feitas</h2></div>
+          <div id="completedList" class="list"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <nav class="bottom-nav">
+    <button class="nav-btn active" data-screen="missoes">⚡<br>Missões</button>
+    <button class="nav-btn" data-screen="base">📊<br>Base</button>
+    <button class="nav-btn" data-screen="cofrinho">🐷<br>Cofrinho</button>
+    <button class="nav-btn" data-screen="hall">🏆<br>Hall</button>
+    <button class="nav-btn" data-screen="historico">📜<br>Histórico</button>
+  </nav>
+
+  <div class="modal-bg" id="taskModal">
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="taskModalTitle">Nova missão</h2>
+        <button class="close" id="closeTaskModal">✕</button>
+      </div>
+      <div class="form">
+        <input id="taskText" placeholder="Nome da missão">
+        <select id="taskSystem">
+          <option value="pets">🐾 Pets</option>
+          <option value="casa">🏠 Casa</option>
+          <option value="financeiro">💰 Financeiro</option>
+          <option value="relacionamento">❤️ Relacionamento</option>
+          <option value="saude">🧠 Saúde</option>
+        </select>
+        <select id="taskDifficulty">
+          <option value="facil">Fácil</option>
+          <option value="media">Média</option>
+          <option value="dificil">Difícil</option>
+          <option value="muito_dificil">Muito difícil</option>
+        </select>
+        <select id="taskPriority">
+          <option value="baixa">Prioridade baixa</option>
+          <option value="normal" selected>Prioridade normal</option>
+          <option value="alta">Prioridade alta</option>
+          <option value="emergencial">Emergencial</option>
+        </select>
+        <label class="field-label">Duração estimada</label>
+        <input id="taskMinutes" type="number" min="1" value="5" placeholder="Minutos">
+        <label class="field-label">Horário preferido para lembrete</label>
+        <input id="taskPreferredTime" type="time" placeholder="Horário preferido">
+        <label class="field-label repeat-field repeat-daily">Repetir a cada X dias</label>
+        <input id="taskInterval" class="repeat-field repeat-daily" type="number" min="1" value="1" placeholder="A cada X dias">
+        <label class="field-label repeat-field repeat-monthly">Dia do mês</label>
+        <input id="taskMonthlyDay" class="repeat-field repeat-monthly" type="number" min="1" max="31" value="1" placeholder="Dia do mês">
+        <label class="field-label">Notificações</label>
+        <select id="taskNotify">
+          <option value="true">Notificar automaticamente</option>
+          <option value="false">Não notificar esta missão</option>
+        </select>
+        <label class="field-label">Dependência</label>
+        <select id="taskParent">
+          <option value="">Aparece normalmente</option>
+        </select>
+        <div id="weekdayBox" class="weekday-box repeat-field repeat-weekly"></div>
+        <button id="saveTaskBtn">Salvar missão</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="goalModal">
+    <div class="modal">
+      <div class="modal-head"><h2>Nova meta</h2><button class="close" id="closeGoalBtn">✕</button></div>
+      <div class="form">
+        <input id="goalName" placeholder="Nome da meta">
+        <select id="goalSystem">
+          <option value="financeiro">💰 Financeiro</option>
+          <option value="casa">🏠 Casa</option>
+          <option value="pets">🐾 Pets</option>
+          <option value="saude">🧠 Saúde</option>
+          <option value="relacionamento">❤️ Relacionamento</option>
+        </select>
+        <input id="goalTarget" type="number" min="0" step="0.01" placeholder="Valor alvo">
+        <button id="saveGoalBtn">Salvar meta</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="notifyModal">
+    <div class="modal">
+      <div class="modal-head"><h2>🔔 Central da Base</h2><button class="close" id="closeNotifyBtn">✕</button></div>
+      <div class="notify-actions">
+        <button class="small" id="enablePushBtn">Ativar notificações neste aparelho</button>
+      </div>
+      <div id="pushStatus" class="empty"></div>
+      <div id="smartNotifications" class="list"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

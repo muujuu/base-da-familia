@@ -1,33 +1,473 @@
-const CONFIG={SUPABASE_URL:"https://ukpbnqzsthxywgabpumj.supabase.co",SUPABASE_ANON_KEY:"sb_publishable_3w3Z8dhj2zjDB7Yl2AB5RA_0eHzqL2a"};
-const FAMILY_ID="base-mu-ju-v9",$=id=>document.getElementById(id),weekNames=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"],weekFull=["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"],systems={casa:["🏠","Casa"],pets:["🐾","Pets"],saude:["🧠","Saúde"],relacionamento:["💞","Relacionamento"],financeiro:["🐷","Financeiro"]},diff={facil:[10,"Fácil"],media:[25,"Média"],dificil:[50,"Difícil"],muito_dificil:[100,"Muito difícil"]},priorityScore={baixa:0,normal:1,alta:2,emergencial:4};
-let sb=null,remoteReady=false,savingRemote=false,missionView="base",taskModalType="daily",editingTaskId=null,calendarMonth=new Date(),activeProfile=localStorage.getItem("bf_active_profile")||"";
-let state={version:9,tasks:JSON.parse(localStorage.getItem("bf_tasks")||"[]"),completions:JSON.parse(localStorage.getItem("bf_completions")||"[]"),goals:JSON.parse(localStorage.getItem("bf_goals")||"[]"),waste:JSON.parse(localStorage.getItem("bf_waste")||"[]"),daySnapshots:JSON.parse(localStorage.getItem("bf_day_snapshots")||"{}"),settings:JSON.parse(localStorage.getItem("bf_settings")||'{"mode":"dark","preset":"cosmic","accent":"#b77cff"}')};
-const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8),money=n=>(Number(n)||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});function dateKey(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}const todayKey=()=>dateKey(new Date());function parseDate(k){return new Date(k+"T00:00:00")}function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}function labelDate(k){return parseDate(k).toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"2-digit"})}
-function localSave(){localStorage.setItem("bf_tasks",JSON.stringify(state.tasks));localStorage.setItem("bf_completions",JSON.stringify(state.completions));localStorage.setItem("bf_goals",JSON.stringify(state.goals));localStorage.setItem("bf_waste",JSON.stringify(state.waste));localStorage.setItem("bf_day_snapshots",JSON.stringify(state.daySnapshots));localStorage.setItem("bf_settings",JSON.stringify(state.settings))}
-async function initRemote(){try{if(!window.supabase)throw new Error("Supabase CDN falhou");sb=window.supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_ANON_KEY);const{data,error}=await sb.from("families").select("data").eq("id",FAMILY_ID).maybeSingle();if(error)throw error;if(data&&data.data)mergeRemote(data.data);remoteReady=true;setSync("synced","sincronizado");await save(true)}catch(e){console.warn(e);remoteReady=false;setSync("local","modo local")}}
-function mergeRemote(data){state.tasks=data.tasks||state.tasks;state.completions=data.completions||state.completions;state.goals=data.goals||state.goals;state.waste=data.waste||state.waste;state.daySnapshots=data.daySnapshots||state.daySnapshots;state.settings=data.settings||state.settings;migrate();localSave()}
-async function save(sync=true){migrate();localSave();if(!sync||!remoteReady||savingRemote)return;try{savingRemote=true;const{error}=await sb.from("families").upsert({id:FAMILY_ID,data:{...state,updatedAt:new Date().toISOString()}});if(error)throw error;setSync("synced","sincronizado")}catch(e){console.warn(e);setSync("error","erro sync")}finally{savingRemote=false}}
-function setSync(c,t){$("syncDot").className="dot "+c;$("syncText").textContent=t}function migrate(){state.tasks.forEach(t=>{if(!t.id)t.id=uid();if(!t.scheduleType)t.scheduleType="daily";if(t.active===undefined)t.active=true;if(t.archived===undefined)t.archived=false;if(!t.system)t.system="casa";if(!t.difficulty)t.difficulty="facil";if(!t.priority)t.priority="normal";if(!t.estimatedMinutes)t.estimatedMinutes=5;if(!t.interval)t.interval=1;if(!Array.isArray(t.weeklyDays))t.weeklyDays=[];if(!t.monthlyDay)t.monthlyDay=1;if(!t.startDate)t.startDate=todayKey();t.assignedTo="Qualquer um"});dedupeCompletions()}function dedupeCompletions(){const seen=new Set(),clean=[];state.completions.sort((a,b)=>(a.completedAt||"").localeCompare(b.completedAt||"")).forEach(c=>{const due=c.dueDate||(c.completedAt?dateKey(new Date(c.completedAt)):todayKey()),key=c.taskId+"|"+due;if(seen.has(key))return;seen.add(key);c.dueDate=due;clean.push(c)});state.completions=clean}
-function applyTheme(){const s=state.settings||{};document.body.className=`mode-${s.mode||"dark"} theme-${s.preset||"cosmic"}`;if(s.accent)document.documentElement.style.setProperty("--accent",s.accent)}function sysIcon(k){return systems[k]?.[0]||"✨"}function calcXp(t){return Math.round((diff[t.difficulty]?.[0]||10)*(1+(priorityScore[t.priority]||1)*.18)+Math.min(80,(Number(t.estimatedMinutes)||5)*1.4))}function energy(t){return Math.max(1,Math.ceil((Number(t.estimatedMinutes)||5)/20)+(priorityScore[t.priority]||1))}
-function tagHtml(t,k){return`<div class="tags"><span class="tag">${sysIcon(t.system)} ${systems[t.system]?.[1]||"Sistema"}</span><span class="tag">Qualquer um pode fazer</span><span class="tag">${t.estimatedMinutes||5} min</span><span class="tag">${calcXp(t)} XP</span><span class="tag">${energy(t)} energia</span><span class="tag">${labelDate(k)}</span></div>`}
-function dueOnDate(t,d){if(t.active===false||t.archived===true)return false;const key=dateKey(d);if(t.startDate&&key<t.startDate)return false;if(t.scheduleType==="daily"){const st=parseDate(t.startDate||"2026-01-01"),days=Math.floor((parseDate(key)-st)/86400000);return days>=0&&days%(Number(t.interval)||1)===0}if(t.scheduleType==="weekly")return(t.weeklyDays||[]).includes(d.getDay());if(t.scheduleType==="monthly")return d.getDate()===(Number(t.monthlyDay)||1);return false}function dueTasks(k){const d=parseDate(k);return state.tasks.filter(t=>dueOnDate(t,d))}function completionFor(id,k){return state.completions.find(c=>c.taskId===id&&c.dueDate===k)}function isDone(id,k){return!!completionFor(id,k)}function parentName(id){return state.tasks.find(t=>t.id===id)?.text||"missão anterior"}function parentDone(t,k){return!t.parentTaskId||isDone(t.parentTaskId,k)}
-function missionStatus(t,k){if(isDone(t.id,k))return{key:"done",icon:"✅",label:"Concluída",canComplete:false};if(k>todayKey())return{key:"scheduled",icon:"⏳",label:"Agendada",detail:`Disponível em ${labelDate(k)}`,canComplete:false};if(!parentDone(t,k))return{key:"locked",icon:"🔒",label:"Bloqueada",detail:`Aguardando: ${parentName(t.parentTaskId)}`,canComplete:false};if(k<todayKey())return{key:"late",icon:"⚠️",label:"Atrasada",canComplete:true};return{key:"available",icon:"🔓",label:"Disponível",canComplete:true}}
-function instances(from=-14,to=45){const arr=[],base=parseDate(todayKey());for(let i=from;i<=to;i++){const d=addDays(base,i),k=dateKey(d);dueTasks(k).forEach(t=>arr.push({task:t,dueDate:k,date:d,status:missionStatus(t,k)}))}return arr}function makeCompletion(t,k){return{id:uid(),taskId:t.id,text:t.text,system:t.system,dueDate:k,completedAt:new Date().toISOString(),completedBy:activeProfile||"Sem perfil",xp:calcXp(t),energy:energy(t)}}
-function completeTask(id,k){const t=state.tasks.find(x=>x.id===id);if(!t||isDone(id,k))return;const st=missionStatus(t,k);if(!st.canComplete)return alert(st.detail||"Missão ainda não liberada.");state.completions.push(makeCompletion(t,k));snapshot(k);snapshot(todayKey());render()}function undoTask(id,k){state.completions=state.completions.filter(c=>!(c.taskId===id&&c.dueDate===k));snapshot(k);snapshot(todayKey());render()}function snapshot(k){state.daySnapshots[k]=dayStats(k)}function dayStats(k){const due=dueTasks(k),done=due.filter(t=>isDone(t.id,k)).length,blocked=due.filter(t=>!isDone(t.id,k)&&!parentDone(t,k)).length,total=due.length,pct=total?Math.round(done/total*100):100;return{total,done,blocked,pct,perfect:total>0&&done===total}}
-function nextInstance(type=null){const order={available:0,late:1,locked:2,scheduled:3,done:4};return instances(0,45).filter(i=>!isDone(i.task.id,i.dueDate)&&(!type||i.task.scheduleType===type)).sort((a,b)=>{if(order[a.status.key]!==order[b.status.key])return order[a.status.key]-order[b.status.key];return a.dueDate.localeCompare(b.dueDate)||calcXp(b.task)-calcXp(a.task)})[0]}
-function card(inst,compact=false){const t=inst.task,st=missionStatus(t,inst.dueDate),done=completionFor(t.id,inst.dueDate),el=document.createElement("div");el.className="mission "+st.key;const action=st.key==="done"?`<button class="ghost small" onclick="undoTask('${t.id}','${inst.dueDate}')">Desfazer</button>`:`<button class="green small" ${st.canComplete?"":"disabled"} onclick="completeTask('${t.id}','${inst.dueDate}')">Feita</button>`;el.innerHTML=`<div><div class="mission-title">${sysIcon(t.system)} ${t.text}</div>${compact?"":tagHtml(t,inst.dueDate)}<div class="status ${st.key}">${st.icon} ${st.label}${st.detail?" • "+st.detail:""}</div>${done?`<p class="muted">Feita por ${done.completedBy}</p>`:""}</div><div class="actions">${action}<button class="small" onclick="openTaskModal('${t.scheduleType}','${t.id}')">Editar</button></div>`;return el}
-function renderMissions(){$("todayPill").textContent=parseDate(todayKey()).toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"2-digit"});document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.mv===missionView));if(missionView==="base")renderMissionBase();if(missionView==="daily")renderList("daily");if(missionView==="weekly")renderWeekly();if(missionView==="monthly")renderList("monthly")}
-function noticesHtml(){const late=instances(-30,-1).filter(i=>missionStatus(i.task,i.dueDate).key==="late"),health=systemHealth("casa");let h="";if(activeProfile)h+=`<div class="card">👤 <b>Perfil ativo: ${activeProfile}</b><br><span class="muted">Quem clicar em Feita ganha o XP.</span></div>`;if(late.length)h+=`<div class="card">⚠️ <b>${late.length} atrasada(s)</b><br><span class="muted">Comece por: ${late[0].task.text}.</span></div>`;if(health<60)h+=`<div class="card">🏠 <b>Casa precisa de atenção</b><br><span class="muted">Saúde do sistema em ${health}%.</span></div>`;return h}
-function renderMissionBase(){const st=dayStats(todayKey()),general=nextInstance(),daily=nextInstance("daily"),weekly=nextInstance("weekly"),monthly=nextInstance("monthly");$("missionContent").innerHTML=`${noticesHtml()}<div class="mission-grid"><div class="card"><h2>Próxima</h2><div id="nextBox"></div></div><div class="card"><h2>Base hoje</h2><div class="stats smallstats"><div class="stat"><strong>${st.done}/${st.total}</strong><span>feitas</span></div><div class="stat"><strong>${st.pct}%</strong><span>progresso</span></div><div class="stat"><strong>${st.blocked}</strong><span>bloqueadas</span></div></div></div></div><div class="mission-row"><div class="card"><h3>☀️ Diária</h3><div id="dailyNext"></div></div><div class="card"><h3>📆 Semanal</h3><div id="weeklyNext"></div></div><div class="card"><h3>🗓️ Mensal</h3><div id="monthlyNext"></div></div></div><div class="card"><h2>Atrasadas</h2><div id="lateList"></div></div>`;renderBox("nextBox",general);renderBox("dailyNext",daily);renderBox("weeklyNext",weekly);renderBox("monthlyNext",monthly);const box=$("lateList"),late=instances(-30,-1).filter(i=>missionStatus(i.task,i.dueDate).key==="late");if(!late.length)box.innerHTML=`<div class="empty">Nenhuma atrasada.</div>`;else late.slice(0,8).forEach(i=>box.appendChild(card(i)))}function renderBox(id,inst){const b=$(id);b.innerHTML="";if(!inst)b.innerHTML=`<div class="empty">Nada pendente.</div>`;else b.appendChild(card(inst))}
-function renderList(type){const label=type==="daily"?"Diárias":"Mensais",btn=type==="daily"?"+ Nova diária":"+ Nova mensal",range=type==="daily"?[0,0]:[0,45],list=instances(...range).filter(i=>i.task.scheduleType===type).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));$("missionContent").innerHTML=`${noticesHtml()}<div class="card"><div class="head"><h2>${label}</h2><button class="small" onclick="openTaskModal('${type}')">${btn}</button></div><div id="missionList"></div></div>`;const box=$("missionList");if(!list.length)box.innerHTML=`<div class="empty">Nada por aqui.</div>`;else list.forEach(i=>box.appendChild(card(i)))}
-function renderWeekly(){const base=parseDate(todayKey()),monday=addDays(base,-((base.getDay()+6)%7));$("missionContent").innerHTML=`${noticesHtml()}<div class="card"><div class="head"><h2>Semanais</h2><button class="small" onclick="openTaskModal('weekly')">+ Nova semanal</button></div><div id="weekBoard" class="week"></div></div>`;const board=$("weekBoard");for(let i=0;i<7;i++){const d=addDays(monday,i),k=dateKey(d),col=document.createElement("div");col.className="day "+(k===todayKey()?"today":"");col.innerHTML=`<strong>${weekFull[d.getDay()]}</strong><div class="weekItems"></div>`;const items=dueTasks(k).filter(t=>t.scheduleType==="weekly").map(t=>({task:t,dueDate:k,date:d,status:missionStatus(t,k)})),target=col.querySelector(".weekItems");if(!items.length)target.innerHTML=`<div class="empty">—</div>`;else items.forEach(inst=>target.appendChild(card(inst,true)));board.appendChild(col)}}
-function openTaskModal(type,id=null){taskModalType=type;editingTaskId=id;const t=id?state.tasks.find(x=>x.id===id):null;$("taskTitle").textContent=t?"Editar missão":`Nova ${type==="daily"?"diária":type==="weekly"?"semanal":"mensal"}`;$("taskText").value=t?.text||"";$("taskSystem").value=t?.system||"casa";$("taskDifficulty").value=t?.difficulty||"facil";$("taskPriority").value=t?.priority||"normal";$("taskMinutes").value=t?.estimatedMinutes||5;$("taskTime").value=t?.preferredTime||"";$("taskInterval").value=t?.interval||1;$("taskMonthDay").value=t?.monthlyDay||1;$("dailyBox").classList.toggle("hidden",type!=="daily");$("weeklyBox").classList.toggle("hidden",type!=="weekly");$("monthlyBox").classList.toggle("hidden",type!=="monthly");$("weekdays").innerHTML=weekNames.map((w,d)=>`<button type="button" class="weekday ${(t?.weeklyDays||[]).includes(d)?"active":""}" data-day="${d}">${w}</button>`).join("");document.querySelectorAll(".weekday").forEach(b=>b.onclick=()=>b.classList.toggle("active"));const parent=$("taskParent");parent.innerHTML=`<option value="">Sem dependência</option>`;state.tasks.filter(x=>x.id!==id&&x.active!==false&&!x.archived).forEach(x=>{const o=document.createElement("option");o.value=x.id;o.textContent=`Depois de: ${x.text}`;parent.appendChild(o)});parent.value=t?.parentTaskId||"";$("dangerRow").classList.toggle("hidden",!t);if(t){$("archiveTask").onclick=()=>archiveTask(t.id);$("deleteTask").onclick=()=>deleteTask(t.id)}$("taskModal").classList.add("open")}
-function saveTask(){const text=$("taskText").value.trim();if(!text)return alert("Dê um nome para a missão.");const weeklyDays=[...document.querySelectorAll(".weekday.active")].map(b=>Number(b.dataset.day));if(taskModalType==="weekly"&&!weeklyDays.length)return alert("Escolha pelo menos um dia.");const data={text,system:$("taskSystem").value,difficulty:$("taskDifficulty").value,priority:$("taskPriority").value,estimatedMinutes:Number($("taskMinutes").value||5),preferredTime:$("taskTime").value||"",scheduleType:taskModalType,interval:Number($("taskInterval").value||1),weeklyDays,monthlyDay:Number($("taskMonthDay").value||1),parentTaskId:$("taskParent").value||"",active:true,archived:false,startDate:todayKey(),assignedTo:"Qualquer um"};if(editingTaskId)Object.assign(state.tasks.find(t=>t.id===editingTaskId),data);else state.tasks.push({id:uid(),...data});$("taskModal").classList.remove("open");render()}function archiveTask(id){const t=state.tasks.find(x=>x.id===id);if(!t)return;if(!confirm(`Arquivar/Pausar "${t.text}"?`))return;t.archived=true;t.active=false;state.tasks.forEach(x=>{if(x.parentTaskId===id)x.parentTaskId=""});$("taskModal").classList.remove("open");render()}function deleteTask(id){const t=state.tasks.find(x=>x.id===id);if(!t)return;if(!confirm(`Excluir "${t.text}" e o histórico dela?`))return;state.tasks=state.tasks.filter(x=>x.id!==id);state.completions=state.completions.filter(c=>c.taskId!==id);state.tasks.forEach(x=>{if(x.parentTaskId===id)x.parentTaskId=""});$("taskModal").classList.remove("open");render()}
-function systemHealth(system){const recent=instances(-6,0).filter(i=>i.task.system===system);if(!recent.length)return 100;return Math.round(recent.filter(i=>isDone(i.task.id,i.dueDate)).length/recent.length*100)}function renderBase(){const st=dayStats(todayKey()),xp=state.completions.reduce((s,c)=>s+(c.xp||0),0),late=instances(-30,-1).filter(i=>missionStatus(i.task,i.dueDate).key==="late").length;$("baseStats").innerHTML=`<div class="stat"><strong>${st.done}/${st.total}</strong><span>hoje</span></div><div class="stat"><strong>${st.pct}%</strong><span>progresso</span></div><div class="stat"><strong>${late}</strong><span>atrasadas</span></div><div class="stat"><strong>${xp}</strong><span>XP</span></div>`;const pct=Math.min(100,Math.round((xp%750)/750*100));$("homeProgress").innerHTML=`<h3>Base nível ${Math.floor(xp/750)+1}</h3><p class="muted">${xp>=3000?"🏡 Base lendária":xp>=2000?"🏠 Lar confortável":xp>=750?"🏘️ Casa organizada":"🛠️ Base em construção"}</p><div class="bar"><span style="width:${pct}%"></span></div>`;renderProfiles()}function personXp(p){return state.completions.filter(c=>c.completedBy===p).reduce((s,c)=>s+(c.xp||0),0)}function renderProfiles(){const items=[["👕","Camiseta",250],["🧢","Boné",500],["👓","Óculos",1000],["🧥","Moletom",2000]];$("profileStats").innerHTML=["Mu","Ju"].map(p=>{const xp=personXp(p);return`<div class="profile"><img class="avatar" src="${p==="Mu"?"icon-192.png":"icon-512.png"}"><h3>${p}</h3><p>${xp} XP</p><div class="items">${items.map(([i,l,n])=>`<span class="${xp>=n?"":"lockedItem"}">${i} ${l}</span>`).join("")}</div></div>`}).join("")}
-function renderFinance(){renderGoals();renderWaste()}function renderGoals(){const b=$("goalList");b.innerHTML="";if(!state.goals.length){b.innerHTML=`<div class="empty">Nenhuma meta ainda.</div>`;return}state.goals.forEach(g=>{const pct=g.target?Math.min(100,Math.round((g.saved||0)/g.target*100)):0,e=document.createElement("div");e.className="goal";e.innerHTML=`<div class="head"><strong>${g.name}</strong><button class="red small" onclick="deleteGoal('${g.id}')">Excluir</button></div><p>${money(g.saved)} guardado • faltam ${money(Math.max(0,g.target-g.saved))}</p><div class="bar"><span style="width:${pct}%"></span></div>`;b.appendChild(e)})}function addGoal(){const name=$("goalName").value.trim(),target=Number($("goalTarget").value||0),saved=Number($("goalSaved").value||0);if(!name||!target)return alert("Preencha nome e valor.");state.goals.push({id:uid(),name,target,saved});$("goalModal").classList.remove("open");render()}function deleteGoal(id){if(confirm("Excluir meta?")){state.goals=state.goals.filter(g=>g.id!==id);render()}}
-function renderWaste(){const month=todayKey().slice(0,7),rows=state.waste.filter(w=>(w.createdAt||"").slice(0,7)===month),label={alcool:"🍻 Álcool",maconha:"🌿 Maconha",delivery:"🍔 Delivery"},total=rows.reduce((s,w)=>s+Number(w.amount||0),0);$("wasteTotal").textContent=`${money(total)} no mês`;$("wasteStats").innerHTML=["alcool","maconha","delivery"].map(k=>`<div class="stat"><strong>${money(rows.filter(w=>w.type===k).reduce((s,w)=>s+Number(w.amount||0),0))}</strong><span>${label[k]}</span></div>`).join("");const list=$("wasteList");list.innerHTML="";if(!rows.length){list.innerHTML=`<div class="empty">Nenhum gasto registrado.</div>`;return}rows.slice().reverse().forEach(w=>{const e=document.createElement("div");e.className="entry";e.innerHTML=`<div><strong>${label[w.type]} • ${money(w.amount)}</strong><p class="muted">${w.profile||""} • ${new Date(w.createdAt).toLocaleString("pt-BR")}</p></div><button class="red small" onclick="deleteWaste('${w.id}')">X</button>`;list.appendChild(e)})}function addWaste(){const amount=Number($("wasteAmount").value||0);if(!amount)return alert("Coloque um valor.");state.waste.push({id:uid(),type:$("wasteType").value,amount,profile:activeProfile||"sem perfil",createdAt:new Date().toISOString()});$("wasteAmount").value="";render()}function deleteWaste(id){state.waste=state.waste.filter(w=>w.id!==id);render()}
-function renderHall(){const total=state.completions.length,perfect=Object.values(state.daySnapshots).filter(d=>d.perfect).length,mu=personXp("Mu"),ju=personXp("Ju");$("hallStats").innerHTML=`<div class="stat"><strong>${total}</strong><span>missões</span></div><div class="stat"><strong>${perfect}</strong><span>dias perfeitos</span></div><div class="stat"><strong>${mu}</strong><span>XP Mu</span></div><div class="stat"><strong>${ju}</strong><span>XP Ju</span></div>`;const ach=[["🌱","Começou","1 missão",total>=1],["🔥","Ritmo","10 missões",total>=10],["🏠","Casa viva","50 missões",total>=50],["⭐","Dia perfeito","1 dia perfeito",perfect>=1],["🐾","Pets cuidados","10 pets",state.completions.filter(c=>c.system==="pets").length>=10],["🐷","Consciência","registrou gastos",state.waste.length>=1]];$("achievements").innerHTML=ach.map(a=>`<div class="achievement ${a[3]?"":"lockedItem"}"><h3>${a[0]} ${a[1]}</h3><p class="muted">${a[2]}</p></div>`).join("")}
-function renderHistory(){const y=calendarMonth.getFullYear(),m=calendarMonth.getMonth();$("calTitle").textContent=calendarMonth.toLocaleDateString("pt-BR",{month:"long",year:"numeric"});const first=new Date(y,m,1),start=addDays(first,-first.getDay()),grid=$("calGrid");grid.innerHTML=weekNames.map(w=>`<div class="cal-head">${w}</div>`).join("");for(let i=0;i<42;i++){const d=addDays(start,i),k=dateKey(d),st=state.daySnapshots[k]||dayStats(k),cell=document.createElement("div");cell.className=`cal ${k===todayKey()?"today":""} ${st.perfect?"perfect":""}`;cell.innerHTML=`<strong>${d.getDate()}</strong><br>${st.done||0}/${st.total||0}<br>${st.pct||0}%${st.perfect?" ⭐":""}`;grid.appendChild(cell)}const list=$("doneList");list.innerHTML="";const rows=state.completions.slice().sort((a,b)=>(b.completedAt||"").localeCompare(a.completedAt||"")).slice(0,80);if(!rows.length){list.innerHTML=`<div class="empty">Nada concluído ainda.</div>`;return}rows.forEach(c=>{const e=document.createElement("div");e.className="entry";e.innerHTML=`<div><strong>${sysIcon(c.system)} ${c.text}</strong><p class="muted">${c.completedBy} • ${labelDate(c.dueDate)} • ${c.xp||0} XP</p></div>`;list.appendChild(e)})}
-function render(){applyTheme();$("profilePill").textContent=activeProfile?`👤 ${activeProfile}`:"sem perfil";renderMissions();renderBase();renderFinance();renderHall();renderHistory();save(true)}function setProfile(p){activeProfile=p;localStorage.setItem("bf_active_profile",p);$("profileGate").classList.add("hidden");$("profileModal").classList.remove("open");render()}function applyTheme(){const s=state.settings||{};document.body.className=`mode-${s.mode||"dark"} theme-${s.preset||"cosmic"}`;if(s.accent)document.documentElement.style.setProperty("--accent",s.accent)}
-function bind(){document.querySelectorAll("[data-profile]").forEach(b=>b.onclick=()=>setProfile(b.dataset.profile));document.querySelectorAll(".nav").forEach(b=>b.onclick=()=>{document.querySelectorAll(".nav").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));$(b.dataset.view).classList.add("active")});document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{missionView=b.dataset.mv;renderMissions()});$("closeTask").onclick=()=>$("taskModal").classList.remove("open");$("saveTask").onclick=saveTask;$("goalBtn").onclick=()=>$("goalModal").classList.add("open");$("closeGoal").onclick=()=>$("goalModal").classList.remove("open");$("saveGoal").onclick=addGoal;$("addWaste").onclick=addWaste;$("profileBtn").onclick=()=>$("profileModal").classList.add("open");$("closeProfile").onclick=()=>$("profileModal").classList.remove("open");$("themeBtn").onclick=()=>{$("themeMode").value=state.settings.mode||"dark";$("themePreset").value=state.settings.preset||"cosmic";$("themeAccent").value=state.settings.accent||"#b77cff";$("themeModal").classList.add("open")};$("closeTheme").onclick=()=>$("themeModal").classList.remove("open");$("saveTheme").onclick=()=>{state.settings={mode:$("themeMode").value,preset:$("themePreset").value,accent:$("themeAccent").value};$("themeModal").classList.remove("open");render()};$("prevMonth").onclick=()=>{calendarMonth.setMonth(calendarMonth.getMonth()-1);renderHistory()};$("nextMonth").onclick=()=>{calendarMonth.setMonth(calendarMonth.getMonth()+1);renderHistory()};$("fixHistory").onclick=()=>{dedupeCompletions();render()}}
-async function start(){applyTheme();bind();migrate();if(!activeProfile)$("profileGate").classList.remove("hidden");if("serviceWorker"in navigator)navigator.serviceWorker.register("./sw.js").catch(()=>{});render();await initRemote();render()}start();
+const CONFIG={
+  SUPABASE_URL:"https://ukpbnqzsthxywgabpumj.supabase.co",
+  SUPABASE_ANON_KEY:"sb_publishable_3w3Z8dhj2zjDB7Yl2AB5RA_0eHzqL2a",
+  ONESIGNAL_APP_ID:"d8f5cd74-b37b-441c-ab84-cce468a9d95d"
+};
+const FAMILY_ID="base-mu-ju-v8";
+let sb=null,remoteReady=false,savingRemote=false,missionView="base",taskModalType="daily",editingTaskId=null,calendarMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1),trophyFilter="Todas";
+let activeProfile=localStorage.getItem("bf_active_profile")||"";
+const systems={
+  pets:["🐾","Pets"],casa:["🏠","Casa"],financeiro:["💰","Financeiro"],relacionamento:["❤️","Relacionamento"],saude:["🧠","Saúde"]
+};
+const systemKeys=Object.keys(systems),weekNames=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"],weekFull=["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
+const diff={facil:[10,"Fácil"],media:[25,"Média"],dificil:[50,"Difícil"],muito_dificil:[100,"Muito difícil"]};
+const priorityScore={baixa:0,normal:1,alta:2,emergencial:4};
+const beerLevels=[["Bavaria","Início"],["Skol","Base ativa"],["Brahma","Rotina firme"],["Original","Guardião"],["Heineken","Especialista"],["Eisenbahn","Veterano"],["Baden Baden","Mestre"],["Patagonia","Comandante"],["Stella Artois","Arquiteto"],["Colorado","Lenda"],["Hoegaarden","Supremo"]];
+const homeStages=[["🏚️","Base improvisada",0],["🏠","Casa organizada",750],["🏡","Lar confortável",2000],["🌳","Base equilibrada",4500],["✨","Base lendária",8500],["🏰","Base suprema",14000]];
+const avatarItems=[["👕","Camiseta",250],["🧢","Boné",500],["👓","Óculos",1000],["🧥","Moletom",2000],["👟","Tênis",3000],["👑","Coroa",5000],["✨","Aura lendária",9000]];
+let state={
+  version:8,
+  tasks:JSON.parse(localStorage.getItem("bf_tasks")||"[]"),
+  completions:JSON.parse(localStorage.getItem("bf_completions")||"[]"),
+  goals:JSON.parse(localStorage.getItem("bf_goals")||"[]"),
+  daySnapshots:JSON.parse(localStorage.getItem("bf_day_snapshots")||"{}"),
+  notificationLog:JSON.parse(localStorage.getItem("bf_notification_log")||"{}"),
+  waste:JSON.parse(localStorage.getItem("bf_waste")||"[]"),
+  settings:JSON.parse(localStorage.getItem("bf_settings")||"{}")
+};
+function $(id){return document.getElementById(id)}
+function uid(){return Date.now().toString()+Math.random().toString(16).slice(2)}
+function dateKey(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
+function parseDate(k){return new Date(k+"T00:00:00")}
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
+function todayKey(){return dateKey(new Date())}
+function money(v){return Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
+function sysIcon(k){return systems[k]?.[0]||"🎯"}function sysLabel(k){return systems[k]?.[1]||k}
+function localSave(){localStorage.setItem("bf_tasks",JSON.stringify(state.tasks));localStorage.setItem("bf_completions",JSON.stringify(state.completions));localStorage.setItem("bf_goals",JSON.stringify(state.goals));localStorage.setItem("bf_day_snapshots",JSON.stringify(state.daySnapshots));localStorage.setItem("bf_notification_log",JSON.stringify(state.notificationLog));localStorage.setItem("bf_waste",JSON.stringify(state.waste||[]));localStorage.setItem("bf_settings",JSON.stringify(state.settings))}
+
+function dedupeCompletions(){
+  const seen=new Set(),clean=[];
+  state.completions.slice().sort((a,b)=>(a.completedAt||"").localeCompare(b.completedAt||"")).forEach(c=>{
+    const day=c.dueDate||(c.completedAt?dateKey(new Date(c.completedAt)):todayKey());
+    const key=`${c.taskId}|${day}`;
+    if(seen.has(key))return;
+    seen.add(key);
+    c.dueDate=day;
+    clean.push(c);
+  });
+  state.completions=clean;
+}
+
+function migrate(){
+  state.tasks.forEach(t=>{
+    if(!t.system)t.system=t.category||"casa";
+    if(t.system==="undefined")t.system="casa";
+    if(!systemKeys.includes(t.system))t.system="casa";
+    if(!t.assignedTo)t.assignedTo="Qualquer um";
+    if(!t.scheduleType)t.scheduleType=t.frequency==="semanal"?"weekly":t.frequency==="mensal"?"monthly":"daily";
+    if(!t.startDate)t.startDate=todayKey();
+    if(!t.createdAt)t.createdAt=new Date().toISOString();
+    if(!t.difficulty)t.difficulty="facil";
+    if(!t.priority)t.priority="normal";
+    if(t.notify===undefined)t.notify=true;
+    if(t.active===undefined)t.active=true;
+    if(!t.estimatedMinutes)t.estimatedMinutes=Number(t.time||5);
+    if(!t.weeklyDays)t.weeklyDays=t.scheduleType==="weekly"?[new Date().getDay()]:[];
+    if(!t.monthlyDay)t.monthlyDay=new Date().getDate();
+    if(!t.interval)t.interval=1;
+  });
+  state.completions.forEach(c=>{if(!c.completedBy)c.completedBy=c.person||activeProfile||"Mu";if(!c.system)c.system=c.category||"casa"});
+  dedupeCompletions();
+  localSave();
+}
+function setSync(type,text){$("syncDot").className="dot "+type;$("syncText").textContent=text}
+function applyData(data){
+  state.version=8;state.tasks=data.tasks||[];state.completions=data.completions||[];state.goals=data.goals||[];
+  state.daySnapshots=data.daySnapshots||{};state.notificationLog=data.notificationLog||{};state.waste=data.waste||state.waste||[];state.settings=data.settings||state.settings||{};
+  migrate();
+}
+async function initSupabase(){
+  if(!CONFIG.SUPABASE_URL||!CONFIG.SUPABASE_ANON_KEY||!window.supabase){setSync("local","modo local");return}
+  sb=window.supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_ANON_KEY);
+  try{
+    const{data,error}=await sb.from("base_familia").select("data").eq("id",FAMILY_ID).maybeSingle();
+    if(error)throw error;
+    if(data&&data.data)applyData(data.data);
+    else await sb.from("base_familia").upsert({id:FAMILY_ID,data:state,updated_at:new Date().toISOString()});
+    remoteReady=true;setSync("online","sincronizado");
+    sb.channel("base-familia-sync-v8").on("postgres_changes",{event:"UPDATE",schema:"public",table:"base_familia",filter:`id=eq.${FAMILY_ID}`},p=>{if(savingRemote)return;if(p.new&&p.new.data){applyData(p.new.data);render(false)}}).subscribe();
+  }catch(e){console.error(e);setSync("local","modo local")}
+}
+let saveTimer=null;
+function save(sync=true){
+  localSave();
+  if(sync&&remoteReady&&sb){
+    clearTimeout(saveTimer);
+    saveTimer=setTimeout(async()=>{
+      savingRemote=true;setSync("online","salvando...");
+      await sb.from("base_familia").upsert({id:FAMILY_ID,data:state,updated_at:new Date().toISOString()});
+      savingRemote=false;setSync("online","sincronizado");
+    },450);
+  }
+}
+function calcXp(t){
+  const base=(diff[t.difficulty||"facil"]||diff.facil)[0],min=Number(t.estimatedMinutes||5);
+  const tm=min>=60?2:min>=30?1.5:min>=15?1.2:min>=5?1.1:1;
+  const fm=t.scheduleType==="monthly"?1.7:t.scheduleType==="weekly"?1.25:1;
+  const pm=t.priority==="emergencial"?1.8:t.priority==="alta"?1.35:t.priority==="baixa"?0.85:1;
+  const am=t.assignedTo==="Ambos"?1.2:1;
+  return Math.round(base*tm*fm*pm*am);
+}
+function energyFor(t){return Math.max(1,Math.round(calcXp(t)/10))}
+function dueOnDate(t,date){
+  if(t.active===false)return false;
+  if(t.priority==="emergencial")return !isTaskDoneForDate(t.id,dateKey(date));
+  const key=dateKey(date),start=parseDate(t.startDate||dateKey(new Date(t.createdAt||Date.now())));
+  if(key<dateKey(start))return false;
+  // Dependência não esconde a missão no planner; apenas bloqueia a conclusão.
+  if(t.scheduleType==="daily"){
+    const days=Math.floor((parseDate(key)-start)/86400000);
+    return days%Number(t.interval||1)===0;
+  }
+  if(t.scheduleType==="weekly")return(t.weeklyDays||[]).map(Number).includes(date.getDay());
+  if(t.scheduleType==="monthly")return date.getDate()===Number(t.monthlyDay||1);
+  return false;
+}
+function dueTasks(key){const d=parseDate(key);return state.tasks.filter(t=>dueOnDate(t,d))}
+function hasEverDone(taskId){return state.completions.some(c=>c.taskId===taskId)}
+function isTaskDoneForDate(taskId,key){
+  return state.completions.some(c=>{
+    if(c.taskId!==taskId)return false;
+    if(c.dueDate===key)return true;
+    if(c.completedAt&&dateKey(new Date(c.completedAt))===key)return true;
+    return false;
+  });
+}
+function completionFor(taskId,key){
+  return state.completions.find(c=>c.taskId===taskId&&(c.dueDate===key||(c.completedAt&&dateKey(new Date(c.completedAt))===key)));
+}
+function parentTaskName(parentId){
+  const parent=state.tasks.find(t=>t.id===parentId);
+  return parent?parent.text:"missão anterior";
+}
+function isParentDoneForOccurrence(task,dueDate){
+  if(!task.parentTaskId)return true;
+  // Dependência por ocorrência/data:
+  // para concluir a missão de uma data, a missão anterior precisa estar feita naquela mesma data.
+  return isTaskDoneForDate(task.parentTaskId,dueDate);
+}
+function getMissionStatus(task,dueDate){
+  if(isTaskDoneForDate(task.id,dueDate))return{key:"done",icon:"✅",label:"Concluída",canComplete:false};
+  if(dueDate>todayKey())return{key:"scheduled",icon:"⏳",label:"Agendada",canComplete:false,detail:`Disponível em ${labelDate(dueDate)}`};
+  if(!isParentDoneForOccurrence(task,dueDate))return{key:"locked",icon:"🔒",label:"Bloqueada",canComplete:false,detail:`Aguardando: ${parentTaskName(task.parentTaskId)}`};
+  if(dueDate<todayKey())return{key:"late",icon:"⚠️",label:"Atrasada",canComplete:true};
+  return{key:"available",icon:"🔓",label:"Disponível",canComplete:true};
+}
+function completeTask(taskId,dueDate){
+  const t=state.tasks.find(x=>x.id===taskId);
+  if(!t||isTaskDoneForDate(taskId,dueDate))return;
+  const status=getMissionStatus(t,dueDate);
+  if(!status.canComplete)return;
+  state.completions.push(makeCompletion(t,dueDate));
+  snapshot(dueDate);
+  if(dueDate!==todayKey())snapshot(todayKey());
+  save(true);
+  maybeLocalCompletionNotify();
+  render();
+}
+function undoTask(taskId,dueDate){
+  state.completions=state.completions.filter(c=>!(c.taskId===taskId&&(c.dueDate===dueDate||(c.completedAt&&dateKey(new Date(c.completedAt))===dueDate))));
+  snapshot(dueDate); if(dueDate!==todayKey())snapshot(todayKey()); render();
+}
+function dayStats(key,system=null){
+  const due=dueTasks(key).filter(t=>!system||t.system===system);
+  const done=due.filter(t=>isTaskDoneForDate(t.id,key)).length;
+  const percent=due.length?Math.round(done/due.length*100):100;
+  return{totalDue:due.length,done,missing:due.length-done,percent,perfect:due.length>0&&done===due.length};
+}
+function snapshot(key){
+  const all=dayStats(key);
+  const bySystem={};systemKeys.forEach(s=>bySystem[s]=dayStats(key,s));
+  state.daySnapshots[key]={...all,bySystem,updatedAt:new Date().toISOString()};
+}
+function refreshSnapshots(){for(let i=-14;i<=0;i++)snapshot(dateKey(addDays(parseDate(todayKey()),i)))}
+function getInstances(from=-14,to=45){
+  const arr=[],base=parseDate(todayKey());
+  for(let i=from;i<=to;i++){
+    const d=addDays(base,i),key=dateKey(d);
+    dueTasks(key).forEach(t=>{
+      const done=isTaskDoneForDate(t.id,key);
+      const parentOk=isParentDoneForOccurrence(t,key);
+      arr.push({
+        task:t,
+        dueDate:key,
+        date:d,
+        done,
+        scheduled:key>todayKey()&&!done,
+        blocked:!done&&key<=todayKey()&&!parentOk,
+        late:key<todayKey()&&!done&&parentOk
+      });
+    });
+  }
+  return arr;
+}
+function nextInstance(type=null){
+  return getInstances(0,60).filter(i=>!i.done&&(!type||i.task.scheduleType===type)).sort((a,b)=>{
+    const sa=getMissionStatus(a.task,a.dueDate),sb=getMissionStatus(b.task,b.dueDate);
+    const order={available:0,late:1,locked:2,scheduled:3,done:4};
+    if(order[sa.key]!==order[sb.key])return order[sa.key]-order[sb.key];
+    if(priorityScore[b.task.priority]!==priorityScore[a.task.priority])return priorityScore[b.task.priority]-priorityScore[a.task.priority];
+    return a.dueDate.localeCompare(b.dueDate)||calcXp(b.task)-calcXp(a.task);
+  })[0];
+}
+function labelDate(key){if(key===todayKey())return"Hoje";if(key<todayKey())return"Atrasada";const d=parseDate(key);return`${weekNames[d.getDay()]} ${d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}`}
+function tagHtml(t,dueDate){
+  return`<div class="meta"><span class="tag">${sysIcon(t.system)} ${sysLabel(t.system)}</span><span class="tag">Qualquer um pode fazer</span><span class="tag">${t.estimatedMinutes||5} min</span><span class="tag">${calcXp(t)} XP</span><span class="tag">${energyFor(t)} energia</span><span class="tag">${labelDate(dueDate)}</span>${t.priority==="emergencial"?'<span class="tag">⚠️ emergencial</span>':""}</div>`;
+}
+function missionCard(i){
+  const t=i.task,who=completionFor(t.id,i.dueDate)?.completedBy,status=getMissionStatus(t,i.dueDate);
+  const el=document.createElement("div");
+  el.className="mission-card "+status.key;
+  const statusLine=status.detail?`<div class="status-line ${status.key}">${status.icon} ${status.label} • ${status.detail}</div>`:`<div class="status-line ${status.key}">${status.icon} ${status.label}</div>`;
+  const action=status.key==="done"
+    ? `<button class="ghost small" onclick="undoTask('${t.id}','${i.dueDate}')">Desfazer</button>`
+    : `<button class="green small" ${status.canComplete?"":"disabled"} onclick="${status.canComplete?`completeTask('${t.id}','${i.dueDate}')`:""}">Feita</button>`;
+  el.innerHTML=`<div><div class="mission-title">${sysIcon(t.system)} ${t.text}</div>${tagHtml(t,i.dueDate)}${statusLine}${who?`<p>Feita por ${who}</p>`:""}</div><div class="actions">${action}<button class="small" onclick="openTaskModal('${t.scheduleType}','${t.id}')">Editar</button></div>`;
+  return el;
+}
+function competition(){
+  const mu={name:"Mu",xp:personXp("Mu"),tasks:personCount("Mu"),time:personTime("Mu")},ju={name:"Ju",xp:personXp("Ju"),tasks:personCount("Ju"),time:personTime("Ju")};
+  return{mu,ju,behindXp:mu.xp<=ju.xp?mu:ju,leaderXp:mu.xp>ju.xp?mu:ju,behindTasks:mu.tasks<=ju.tasks?mu:ju,diffXp:Math.abs(mu.xp-ju.xp),diffTasks:Math.abs(mu.tasks-ju.tasks)};
+}
+function personXp(p){return state.completions.filter(c=>c.completedBy===p).reduce((s,c)=>s+Number(c.xp||0),0)}
+function personCount(p){return state.completions.filter(c=>c.completedBy===p).length}
+function personTime(p){return state.completions.filter(c=>c.completedBy===p).reduce((s,c)=>{const t=state.tasks.find(x=>x.id===c.taskId);return s+Number(t?.estimatedMinutes||0)},0)}
+function baseXp(){return state.completions.reduce((s,c)=>s+Number(c.xp||0),0)+perfectDays()*50+completedGoals()*500}
+function baseEnergy(){return Math.min(100,state.completions.filter(c=>c.dueDate>=dateKey(addDays(new Date(),-7))).reduce((s,c)=>s+Number(c.energy||0),0))}
+function perfectDays(){return Object.values(state.daySnapshots).filter(s=>s.perfect).length}
+function completedGoals(){return state.goals.filter(g=>Number(g.current||0)>=Number(g.target||0)&&Number(g.target)>0).length}
+function beerForXp(xp){const idx=Math.min(beerLevels.length-1,Math.floor(xp/750));return{name:beerLevels[idx][0],title:beerLevels[idx][1],xp:Math.round(xp),progress:Math.round((xp%750)/750*100)}}
+function streakFor(system=null){
+  let count=0,d=parseDate(todayKey());
+  while(true){
+    const key=dateKey(d),due=dueTasks(key).filter(t=>!system||t.system===system);
+    if(!due.length)break;
+    if(due.every(t=>isTaskDoneForDate(t.id,key))){count++;d=addDays(d,-1)}else break;
+  }
+  return count;
+}
+function systemHealth(system){
+  const today=dayStats(todayKey(),system).percent;
+  let recent=0,days=0;
+  for(let i=0;i<7;i++){const s=dayStats(dateKey(addDays(parseDate(todayKey()),-i)),system);if(s.totalDue){recent+=s.percent;days++}}
+  const avg=days?Math.round(recent/days):100;
+  const late=getInstances(-7,-1).filter(i=>i.late&&i.task.system===system).length;
+  return Math.max(0,Math.min(100,Math.round(avg-late*8)));
+}
+function baseHealth(){return Math.round(systemKeys.reduce((s,k)=>s+systemHealth(k),0)/systemKeys.length)}
+function overloadForecast(){
+  let worst={date:null,count:0};
+  for(let i=0;i<7;i++){const d=addDays(parseDate(todayKey()),i),key=dateKey(d),count=dueTasks(key).filter(t=>!isTaskDoneForDate(t.id,key)).reduce((s,t)=>s+Number(t.estimatedMinutes||5),0);if(count>worst.count)worst={date:key,count}}
+  return worst;
+}
+function smartNotices(){
+  const st=dayStats(todayKey()),late=getInstances(-30,-1).filter(i=>i.late),today=getInstances(0,0).filter(i=>!i.done),best=[...late,...today].filter(i=>i.task.notify!==false).sort((a,b)=>{
+    if((a.late?1:0)!==(b.late?1:0))return (b.late?1:0)-(a.late?1:0);
+    if(priorityScore[b.task.priority]!==priorityScore[a.task.priority])return priorityScore[b.task.priority]-priorityScore[a.task.priority];
+    return Number(a.task.estimatedMinutes||5)-Number(b.task.estimatedMinutes||5);
+  })[0],comp=competition(),arr=[],forecast=overloadForecast();
+  if(activeProfile)arr.push({type:"personal",icon:"👤",title:`Perfil ativo: ${activeProfile}`,text:"XP e provocações estão personalizados para este aparelho."});
+  if(late.length)arr.push({type:"danger",icon:"⚠️",title:`${late.length} atrasada(s)`,text:`Comece por: ${late[0].task.text}.`});
+  if(st.totalDue>0&&st.done===st.totalDue-1)arr.push({type:"good",icon:"⭐",title:"Falta só 1 missão para Dia Perfeito",text:"Fecha essa e a Base ganha moral hoje."});
+  if(best)arr.push({type:"tip",icon:"🧠",title:"Sugestão da Base",text:`${best.task.text} • ${best.task.estimatedMinutes||5} min • ${calcXp(best.task)} XP.`});
+  if(activeProfile&&comp.diffXp>=50){
+    if(comp.behindXp.name===activeProfile)arr.push({type:"tip",icon:"🏁",title:"Dá para virar o jogo",text:`Você está ${Math.round(comp.diffXp)} XP atrás. Uma missão média já ajuda.`});
+    else arr.push({type:"good",icon:"🔥",title:"Você está liderando",text:`Vantagem de ${Math.round(comp.diffXp)} XP. Mantém o ritmo.`});
+  }
+  if(forecast.count>=90)arr.push({type:"danger",icon:"📈",title:"Risco de sobrecarga",text:`${labelDate(forecast.date)} tem cerca de ${forecast.count} min acumulados.`});
+  systemKeys.forEach(k=>{const h=systemHealth(k);if(h<60)arr.push({type:"danger",icon:sysIcon(k),title:`${sysLabel(k)} precisa de atenção`,text:`Saúde do sistema em ${h}%.`})});
+  return arr.length?arr:[{type:"good",icon:"🌿",title:"Base tranquila",text:"Nada urgente agora."}];
+}
+function noticesHtml(){return `<div class="smart-strip">${smartNotices().slice(0,5).map(n=>`<div class="notice ${n.type}"><div class="notice-icon">${n.icon}</div><div><strong>${n.title}</strong><p>${n.text}</p></div></div>`).join("")}</div>`}
+function renderMissions(){
+  refreshSnapshots();
+  $("todayDate").textContent=new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"2-digit"});
+  document.querySelectorAll(".mission-tab").forEach(b=>b.classList.toggle("active",b.dataset.missionView===missionView));
+  if(missionView==="base")renderMissionBase();if(missionView==="daily")renderMissionDaily();if(missionView==="weekly")renderMissionWeekly();if(missionView==="monthly")renderMissionMonthly();
+}
+function renderMissionBase(){
+  const general=nextInstance(),daily=nextInstance("daily"),weekly=nextInstance("weekly"),monthly=nextInstance("monthly"),late=getInstances(-30,-1).filter(i=>i.late),blockedToday=getInstances(0,0).filter(i=>getMissionStatus(i.task,i.dueDate).key==="locked").length,st=dayStats(todayKey());
+  $("missionView").innerHTML=`${noticesHtml()}<div class="mission-lobby"><div class="card"><div class="section-head"><h2>Próxima</h2></div><div id="generalNext"></div></div><div class="card"><div class="section-head"><h2>Base hoje</h2></div><div class="stats-grid"><div class="stat"><strong>${st.done}/${st.totalDue}</strong><span>feitas</span></div><div class="stat"><strong>${st.percent}%</strong><span>progresso</span></div><div class="stat"><strong>${blockedToday}</strong><span>bloqueadas</span></div><div class="stat"><strong>${st.perfect?"⭐":"—"}</strong><span>dia perfeito</span></div></div></div></div><div class="card"><div class="panel-grid"><div class="panel"><div class="panel-title">☀️ Diária</div><div id="nextDaily"></div></div><div class="panel"><div class="panel-title">📆 Semanal</div><div id="nextWeekly"></div></div><div class="panel"><div class="panel-title">🗓️ Mensal</div><div id="nextMonthly"></div></div></div></div><div class="card"><div class="section-head"><h2>Atrasadas</h2><span class="pill">${late.length}</span></div><div id="lateList" class="mission-list"></div></div>`;
+  renderMini("generalNext",general,true);renderMini("nextDaily",daily);renderMini("nextWeekly",weekly);renderMini("nextMonthly",monthly);
+  const lateList=$("lateList");if(!late.length)lateList.innerHTML=`<div class="empty">Nenhuma atrasada.</div>`;late.slice(0,8).forEach(i=>lateList.appendChild(missionCard(i)));
+}
+function renderMini(id,i,big=false){
+  const box=$(id);if(!i){box.innerHTML=`<div class="empty">Nada pendente.</div>`;return}
+  const t=i.task,status=getMissionStatus(t,i.dueDate);
+  const statusLine=status.detail?`<div class="status-line ${status.key}">${status.icon} ${status.label} • ${status.detail}</div>`:`<div class="status-line ${status.key}">${status.icon} ${status.label}</div>`;
+  box.innerHTML=`<div class="${big?'panel big':''}"><div class="mission-title">${sysIcon(t.system)} ${t.text}</div>${tagHtml(t,i.dueDate)}${statusLine}<div class="actions"><button class="green small" ${status.canComplete?"":"disabled"} onclick="${status.canComplete?`completeTask('${t.id}','${i.dueDate}')`:""}">Feita</button><button class="small" onclick="missionView='${t.scheduleType}';renderMissions()">Ver</button></div></div>`;
+}
+function renderMissionDaily(){
+  // Diárias: apenas a ocorrência de hoje.
+  // Amanhã não aparece hoje, para evitar clique antecipado.
+  const today=getInstances(0,0).filter(i=>i.task.scheduleType==="daily"||i.task.priority==="emergencial");
+  $("missionView").innerHTML=`${noticesHtml()}<div class="card"><div class="view-head"><h2>Diárias</h2><button class="small" onclick="openTaskModal('daily')">+ Nova diária</button></div><div id="dailyList" class="mission-list"></div></div>`;
+  const list=$("dailyList");
+  if(!today.length)list.innerHTML=`<div class="empty">Nenhuma diária para hoje.</div>`;
+  today.forEach(i=>list.appendChild(missionCard(i)));
+}
+
+function updateRepeatFields(type){
+  document.querySelectorAll(".repeat-field").forEach(el=>el.classList.add("hidden"));
+  if(type==="daily")document.querySelectorAll(".repeat-daily").forEach(el=>el.classList.remove("hidden"));
+  if(type==="weekly")document.querySelectorAll(".repeat-weekly").forEach(el=>el.classList.remove("hidden"));
+  if(type==="monthly")document.querySelectorAll(".repeat-monthly").forEach(el=>el.classList.remove("hidden"));
+}
+
+function openTaskModal(type,taskId=null){
+  taskModalType=type;editingTaskId=taskId;const t=taskId?state.tasks.find(x=>x.id===taskId):null;
+  $("taskModalTitle").textContent=t?"Editar missão":type==="daily"?"Nova diária":type==="weekly"?"Nova semanal":"Nova mensal";
+  $("taskText").value=t?.text||"";$("taskSystem").value=t?.system||"casa";$("taskDifficulty").value=t?.difficulty||"facil";$("taskPriority").value=t?.priority||"normal";$("taskMinutes").value=t?.estimatedMinutes||5;$("taskPreferredTime").value=t?.preferredTime||"";$("taskInterval").value=t?.interval||1;$("taskMonthlyDay").value=t?.monthlyDay||1;$("taskNotify").value=String(t?.notify!==false);
+  fillParentOptions(t?.id||"");$("taskParent").value=t?.parentTaskId||"";
+  updateRepeatFields(type);
+  $("weekdayBox").innerHTML=[0,1,2,3,4,5,6].map(d=>`<button type="button" class="weekday ${(t?.weeklyDays||[]).includes(d)?"active":""}" data-day="${d}">${weekNames[d]}</button>`).join("");
+  document.querySelectorAll(".weekday").forEach(b=>b.onclick=()=>b.classList.toggle("active"));$("taskModal").classList.add("open");
+}
+function saveTask(){
+  const text=$("taskText").value.trim();if(!text)return alert("Digite o nome.");
+  const data={text,system:$("taskSystem").value,assignedTo:"Qualquer um",difficulty:$("taskDifficulty").value,priority:$("taskPriority").value,estimatedMinutes:Number($("taskMinutes").value||5),preferredTime:$("taskPreferredTime").value||"",scheduleType:taskModalType,interval:Number($("taskInterval").value||1),monthlyDay:Number($("taskMonthlyDay").value||1),weeklyDays:[...document.querySelectorAll(".weekday.active")].map(b=>Number(b.dataset.day)),notify:$("taskNotify").value==="true",parentTaskId:$("taskParent").value||"",active:true};
+  if(taskModalType==="weekly"&&!data.weeklyDays.length)return alert("Escolha ao menos um dia.");
+  if(editingTaskId)Object.assign(state.tasks.find(x=>x.id===editingTaskId),data);else state.tasks.push({...data,id:uid(),startDate:todayKey(),createdAt:new Date().toISOString()});
+  $("taskModal").classList.remove("open");render();
+}
+function renderBase(){
+  const mx=personXp("Mu"),jx=personXp("Ju"),bx=baseXp(),hs=homeStage(),health=baseHealth(),energy=baseEnergy();
+  $("homeStageIcon").textContent=hs.icon;$("homeStageName").textContent=hs.name;$("homeStageDesc").textContent=`${Math.round(bx)} XP • ${perfectDays()} dias perfeitos • ${completedGoals()} metas concluídas`;$("baseLevelPill").textContent=`Nível ${hs.idx+1}`;$("homeProgress").style.width=Math.min(100,Math.round((bx-hs.min)/Math.max(1,hs.next-hs.min)*100))+"%";
+  $("baseHealthPill").textContent=health+"%";$("baseHealthProgress").style.width=health+"%";$("energyText").textContent=energy+"/100";
+  $("dashMuBeer").textContent="🍺 "+beerForXp(mx).name;$("dashMuSummary").textContent=`${Math.round(mx)} XP • ${personCount("Mu")} missões • ${personTime("Mu")} min`;
+  $("dashJuBeer").textContent="🍺 "+beerForXp(jx).name;$("dashJuSummary").textContent=`${Math.round(jx)} XP • ${personCount("Ju")} missões • ${personTime("Ju")} min`;
+  renderSystemHealth();renderStreaks();renderProfiles();renderCompetition();
+}
+function homeStage(){const xp=baseXp();let idx=0;for(let i=0;i<homeStages.length;i++)if(xp>=homeStages[i][2])idx=i;return{idx,icon:homeStages[idx][0],name:homeStages[idx][1],next:homeStages[idx+1]?.[2]||homeStages[idx][2],min:homeStages[idx][2]}}
+function renderSystemHealth(){
+  $("systemHealthGrid").innerHTML="";
+  systemKeys.forEach(k=>{const h=systemHealth(k),d=document.createElement("div");d.className="system-card";d.innerHTML=`<strong>${sysIcon(k)} ${sysLabel(k)}</strong><p>${h}% saudável</p><div class="progress"><div class="progress-fill" style="width:${h}%"></div></div>`;$("systemHealthGrid").appendChild(d)});
+}
+function renderStreaks(){$("streakGrid").innerHTML=[["🏡","Base",null],...systemKeys.map(k=>[sysIcon(k),sysLabel(k),k])].map(([i,n,c])=>`<div class="streak-card"><strong>${i} ${n}</strong><p>${streakFor(c)} dias seguidos</p></div>`).join("")}
+function renderProfiles(){
+  $("profileGrid").innerHTML="";
+  [["Mu",personXp("Mu"),"👨"],["Ju",personXp("Ju"),"👩"]].forEach(([name,xp,emoji])=>{const d=document.createElement("div");d.className="profile-card";d.innerHTML=`<div class="profile-avatar">${emoji}</div><h3>${name}</h3><p>${Math.round(xp)} XP</p><div class="avatar-items">${avatarItems.map(([icon,label,need])=>`<span class="item ${xp>=need?"":"locked"}">${icon} ${label}</span>`).join("")}</div>`;$("profileGrid").appendChild(d)});
+}
+function renderCompetition(){
+  const c=competition(),viewer=activeProfile,other=viewer==="Mu"?"Ju":"Mu";
+  $("competitionBox").innerHTML=`<div class="notice personal"><div class="notice-icon">🏁</div><div><strong>${c.leaderXp.name} lidera no XP</strong><p>Diferença: ${Math.round(c.diffXp)} XP.</p></div></div><div class="notice tip"><div class="notice-icon">📊</div><div><strong>${c.behindTasks.name} fez menos missões</strong><p>Diferença: ${c.diffTasks} missões.</p></div></div>${viewer?`<div class="notice ${c.behindXp.name===viewer?'danger':'good'}"><div class="notice-icon">${c.behindXp.name===viewer?'⚡':'🔥'}</div><div><strong>${c.behindXp.name===viewer?'Você pode virar':'Você está na frente'}</strong><p>${c.behindXp.name===viewer?'Faça uma missão rápida para encostar.':'Mantenha a sequência para não perder a liderança.'}</p></div></div>`:""}`;
+}
+
+function addWaste(){
+  const type=$("wasteType")?.value;
+  const amount=Number($("wasteAmount")?.value||0);
+  if(!type||!amount)return alert("Coloque um valor.");
+  state.waste=state.waste||[];
+  state.waste.push({id:uid(),type,amount,profile:activeProfile||"sem perfil",createdAt:new Date().toISOString()});
+  $("wasteAmount").value="";
+  render();
+}
+function deleteWaste(id){
+  state.waste=(state.waste||[]).filter(w=>w.id!==id);
+  render();
+}
+function renderWaste(){
+  if(!$("wasteStats"))return;
+  const now=new Date(),monthKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+  const rows=(state.waste||[]).filter(w=>(w.createdAt||"").slice(0,7)===monthKey);
+  const label={alcool:"🍻 Álcool",maconha:"🌿 Maconha",delivery:"🍔 Delivery"};
+  const total=rows.reduce((s,w)=>s+Number(w.amount||0),0);
+  $("wasteMonthTotal").textContent=`${money(total)} no mês`;
+  $("wasteStats").innerHTML=["alcool","maconha","delivery"].map(k=>{
+    const v=rows.filter(w=>w.type===k).reduce((s,w)=>s+Number(w.amount||0),0);
+    return `<div class="stat"><strong>${money(v)}</strong><span>${label[k]}</span></div>`;
+  }).join("");
+  const list=$("wasteList");
+  if(!rows.length){list.innerHTML=`<div class="empty">Nenhum gasto registrado este mês.</div>`;return}
+  list.innerHTML="";
+  rows.slice().sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0,30).forEach(w=>{
+    const e=document.createElement("div");
+    e.className="entry";
+    e.innerHTML=`<div><strong>${label[w.type]} • ${money(w.amount)}</strong><p>${w.profile||""} • ${new Date(w.createdAt).toLocaleString("pt-BR")}</p></div><button class="red small" onclick="deleteWaste('${w.id}')">X</button>`;
+    list.appendChild(e);
+  });
+}
+
+function renderGoals(){
+  const saved=state.goals.reduce((s,g)=>s+Number(g.current||0),0),target=state.goals.reduce((s,g)=>s+Number(g.target||0),0);
+  $("cofrinhoTotal").textContent=money(saved);$("cofrinhoMissing").textContent=money(Math.max(0,target-saved));$("cofrinhoCount").textContent=state.goals.length;$("goalList").innerHTML="";
+  if(!state.goals.length){$("goalList").innerHTML=`<div class="empty">Nenhuma meta.</div>`;return}
+  state.goals.forEach(g=>{const pct=Math.min(100,g.target?Math.round(Number(g.current||0)/Number(g.target)*100):0),d=document.createElement("div");d.className="goal";d.innerHTML=`<div class="goal-top"><div><strong>${sysIcon(g.system)||"🎯"} ${g.name}</strong><p>Faltam ${money(Math.max(0,Number(g.target)-Number(g.current||0)))}</p></div><strong>${money(g.current)} / ${money(g.target)}</strong></div><div class="progress"><div class="progress-fill" style="width:${pct}%"></div></div><div class="goal-actions"><input id="goal-${g.id}" type="number" step="0.01" placeholder="Adicionar R$"><button class="green small" onclick="addGoalMoney('${g.id}')">Adicionar</button><button class="red small" onclick="deleteGoal('${g.id}')">X</button></div>`;$("goalList").appendChild(d)});
+}
+function addGoal(){const name=$("goalName").value.trim(),target=Number($("goalTarget").value);if(!name||!target)return alert("Preencha nome e valor.");state.goals.push({id:uid(),name,system:$("goalSystem").value,target,current:0});$("goalModal").classList.remove("open");$("goalName").value="";$("goalTarget").value="";render()}
+function addGoalMoney(id){const g=state.goals.find(x=>x.id===id),v=Number($("goal-"+id).value);if(!g||!v)return;g.current=Number(g.current||0)+v;render()}
+function deleteGoal(id){if(confirm("Excluir meta?")){state.goals=state.goals.filter(g=>g.id!==id);render()}}
+function renderHall(){
+  const list=[],total=state.completions.length;[1,5,10,25,50,100,250,500].forEach(n=>list.push({cat:"Todas",name:`${n} missões feitas`,ok:total>=n,icon:"🏆"}));
+  [1,3,7,15,30,60,100].forEach(n=>list.push({cat:"Dia Perfeito",name:`${n} dias perfeitos`,ok:perfectDays()>=n,icon:"⭐"}));
+  systemKeys.forEach(k=>[1,5,10,25,50,100].forEach(n=>list.push({cat:sysLabel(k),name:`${n} em ${sysLabel(k)}`,ok:state.completions.filter(x=>x.system===k).length>=n,icon:sysIcon(k)})));
+  [10,30,60,120,300].forEach(n=>list.push({cat:"Tempo",name:`${n} min investidos`,ok:personTime("Mu")+personTime("Ju")>=n,icon:"⏱️"}));
+  const cats=["Todas","Pets","Casa","Financeiro","Relacionamento","Saúde","Dia Perfeito","Tempo"],un=list.filter(a=>a.ok).length;$("achievementBadge").textContent=un;$("trophyTabs").innerHTML="";
+  cats.forEach(c=>{const b=document.createElement("button");b.className="small "+(trophyFilter===c?"active":"");b.textContent=c;b.onclick=()=>{trophyFilter=c;renderHall()};$("trophyTabs").appendChild(b)});
+  $("achievementList").innerHTML="";(trophyFilter==="Todas"?list:list.filter(x=>x.cat===trophyFilter)).forEach(a=>{const d=document.createElement("div");d.className="trophy "+(a.ok?"":"locked");d.innerHTML=`<div class="trophy-icon">${a.ok?a.icon:"🔒"}</div><strong>${a.name}</strong>`;$("achievementList").appendChild(d)});
+}
+function renderHistory(){
+  const names=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"],y=calendarMonth.getFullYear(),m=calendarMonth.getMonth();
+  $("monthTitle").textContent=`${names[m]} de ${y}`;const first=new Date(y,m,1),days=new Date(y,m+1,0).getDate();let off=first.getDay()-1;if(off<0)off=6;$("calendarDays").innerHTML="";
+  for(let i=0;i<off;i++){const e=document.createElement("div");e.className="day empty";$("calendarDays").appendChild(e)}
+  for(let d=1;d<=days;d++){const k=dateKey(new Date(y,m,d)),s=dayStats(k),el=document.createElement("div");el.className="day "+(k===todayKey()?"today":"");el.innerHTML=`<strong>${d}</strong><div class="day-score">${s.done}/${s.totalDue}</div><div class="day-score">${s.percent}% ${s.perfect?"⭐":""}</div>`;$("calendarDays").appendChild(el)}
+  $("completedList").innerHTML="";state.completions.slice().sort((a,b)=>b.completedAt.localeCompare(a.completedAt)).slice(0,80).forEach(c=>{const e=document.createElement("div");e.className="entry";e.innerHTML=`<div><strong>${sysIcon(c.system)} ${c.taskText}</strong><p>${c.completedBy} • ${new Date(c.completedAt).toLocaleString("pt-BR")} • ${c.xp} XP • ${c.energy||0} energia</p></div>`;$("completedList").appendChild(e)});
+}
+function renderNotifyModal(){
+  $("smartNotifications").innerHTML=smartNotices().map(n=>`<div class="notice ${n.type}"><div class="notice-icon">${n.icon}</div><div><strong>${n.title}</strong><p>${n.text}</p></div></div>`).join("");
+  let status="Este aparelho ainda não confirmou permissão de notificação.";
+  if("Notification" in window){
+    if(Notification.permission==="granted")status=`<strong>Notificações ativas</strong><br>Este aparelho recebe avisos do perfil ${activeProfile||"não escolhido"}.`;
+    if(Notification.permission==="denied")status=`<strong>Notificações bloqueadas</strong><br>Ative manualmente nas permissões do navegador.`;
+    if(Notification.permission==="default")status=`<strong>Permissão pendente</strong><br>O app vai pedir permissão para enviar avisos.`;
+  }
+  $("pushStatus").innerHTML=status;
+}
+async function enablePush(){
+  await autoEnablePush(true);
+}
+async function autoEnablePush(force=false){
+  if(!activeProfile)return;
+  if(!force && localStorage.getItem("bf_push_prompted_"+activeProfile)==="yes")return;
+  if(!("Notification" in window))return;
+  try{
+    window.OneSignalDeferred=window.OneSignalDeferred||[];
+    window.OneSignalDeferred.push(async function(OneSignal){
+      await OneSignal.init({appId:CONFIG.ONESIGNAL_APP_ID,serviceWorkerPath:"OneSignalSDKWorker.js"});
+      await OneSignal.User.addTag("profile",activeProfile);
+      if(force || Notification.permission==="default"){
+        await OneSignal.Notifications.requestPermission();
+      }
+      localStorage.setItem("bf_push_prompted_"+activeProfile,"yes");
+      renderNotifyModal();
+    });
+  }catch(e){
+    console.error(e);
+  }
+}
+function browserNotify(title,body){if("Notification"in window&&Notification.permission==="granted")new Notification(title,{body,icon:"icon-192.png"})}
+function requestLocalNotifications(){if(!("Notification"in window))return alert("Sem suporte.");Notification.requestPermission().then(p=>{if(p==="granted")browserNotify("🔔 Base da Família","Teste local funcionando.");else alert("Permissão negada.")})}
+async function testServerPush(){const r=await fetch("/.netlify/functions/send-push",{method:"POST"});const text=await r.text();alert(r.ok?"Push servidor enviado.":"Erro no push servidor: "+text.slice(0,180))}
+function maybeLocalCompletionNotify(){const st=dayStats(todayKey());if(st.totalDue>0&&st.done===st.totalDue)browserNotify("⭐ Dia Perfeito","Todas as missões de hoje foram concluídas.");else if(st.totalDue>0&&st.done===st.totalDue-1)browserNotify("Quase lá","Falta só uma missão para o Dia Perfeito.")}
+function render(sync=true){renderMissions();renderBase();renderGoals();renderWaste();renderHall();renderHistory();renderNotifyModal();$("activeProfilePill").textContent=activeProfile?`👤 ${activeProfile}`:"sem perfil";save(sync)}
+function setProfile(p){
+  activeProfile=p;
+  localStorage.setItem("bf_active_profile",p);
+  $("profileGate").classList.add("hidden");
+  render(false);
+  setTimeout(()=>autoEnablePush(),800);
+}
+function setup(){
+  const theme=localStorage.getItem("bf_theme")||"dark";document.documentElement.dataset.theme=theme;$("themeToggle").textContent=theme==="dark"?"☀️ Tema":"🌙 Tema";
+  $("themeToggle").onclick=()=>{const n=document.documentElement.dataset.theme==="dark"?"light":"dark";document.documentElement.dataset.theme=n;localStorage.setItem("bf_theme",n);$("themeToggle").textContent=n==="dark"?"☀️ Tema":"🌙 Tema"};
+  document.querySelectorAll(".profile-choice").forEach(b=>b.onclick=()=>setProfile(b.dataset.profile));if(activeProfile){$("profileGate").classList.add("hidden");setTimeout(()=>autoEnablePush(),1200)}
+  $("switchProfileBtn").onclick=()=>{$("profileGate").classList.remove("hidden")};
+  document.querySelectorAll(".nav-btn").forEach(b=>b.onclick=()=>{document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));$("screen-"+b.dataset.screen).classList.add("active");document.querySelectorAll(".nav-btn").forEach(x=>x.classList.remove("active"));b.classList.add("active")});
+  document.querySelectorAll(".mission-tab").forEach(b=>b.onclick=()=>{missionView=b.dataset.missionView;renderMissions()});
+  $("saveTaskBtn").onclick=saveTask;$("closeTaskModal").onclick=()=>$("taskModal").classList.remove("open");
+  $("openGoalBtn").onclick=()=>$("goalModal").classList.add("open");$("closeGoalBtn").onclick=()=>$("goalModal").classList.remove("open");$("saveGoalBtn").onclick=addGoal;if($("addWasteBtn"))$("addWasteBtn").onclick=addWaste;
+  $("prevMonthBtn").onclick=()=>{calendarMonth.setMonth(calendarMonth.getMonth()-1);render(false)};$("nextMonthBtn").onclick=()=>{calendarMonth.setMonth(calendarMonth.getMonth()+1);render(false)};
+  $("notifyBtn").onclick=()=>{$("notifyModal").classList.add("open");renderNotifyModal()};$("closeNotifyBtn").onclick=()=>$("notifyModal").classList.remove("open");
+  $("enablePushBtn").onclick=enablePush;
+}
+migrate();setup();if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});render(false);initSupabase().then(()=>render(false));
