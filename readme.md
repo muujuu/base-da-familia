@@ -1,15 +1,7 @@
-# Base da Família V8.5 corrigida
+# Base da Família V9 — Missões refeitas
 
-Correções:
-- Missão diária só mostra/conclui a ocorrência de hoje.
-- Depois de concluir hoje, amanhã não aparece como clicável no mesmo dia.
-- Missão semanal só pode ser feita nos dias escolhidos.
-- Missão mensal só pode ser feita no dia configurado.
-- Ocorrências futuras aparecem como ⏳ Agendadas e não podem ser clicadas.
-- Missões dependentes aparecem como 🔒 Bloqueadas e não somem do planner.
-- Dependência funciona por data/ocorrência.
-- Anti duplicação: a mesma missão não pode gerar várias conclusões no mesmo dia.
-- Limpeza de histórico duplicado ao carregar.
-- Mantém a seção Álcool, maconha e delivery no Cofrinho.
+Versão limpa, reescrita para estabilizar o app.
 
-Como os créditos do Netlify acabaram, guarde este ZIP e suba quando os créditos voltarem.
+Inclui: Supabase/sincronização, perfis Mu/Ju, missões diárias/semanais/mensais, planner semanal em grade, lock por data, dependências visíveis, excluir/arquivar missão, histórico sem duplicar por missão/data, cofrinho/metas, álcool/maconha/delivery, hall/conquistas, temas personalizáveis e PWA.
+
+Removido: OneSignal, push, testes de notificação e qualquer código de notificação.
